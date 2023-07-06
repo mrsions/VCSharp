@@ -10,6 +10,8 @@ namespace VCSharp
 {
     public unsafe class Procedure
     {
+        const int COMPARE_TYPE_MAX = 7;
+
         public class Variable
         {
             public VType Type;
@@ -55,7 +57,7 @@ namespace VCSharp
             }
         }
 
-        internal unsafe void Call(StackMemory stackMem, byte* beforeStacks, VObject? caller)
+        internal unsafe void Call(StackMemory stackMem, StackValue* arguments, VObject? caller)
         {
             // 스택 가져오기
             if (stackMem == null)
@@ -68,7 +70,6 @@ namespace VCSharp
             StackValue* stack = stackalloc StackValue[MaxStack];
             StackValue* v1;
             StackValue* v2;
-            int cursor = 0;
             #endregion
 
             #region 지역변수 초기화
@@ -104,10 +105,12 @@ namespace VCSharp
                     {
                     }
                     goto NEXT;
+
                 case ILOpCode.Break:
                     {
                     }
                     goto NEXT;
+
                 case ILOpCode.Ldarg_0:
                     {
                     }
@@ -266,27 +269,27 @@ namespace VCSharp
                     goto NEXT;
                 case ILOpCode.Ldc_i4_s:
                     {
-                        *(stack++) = new StackValue { type = StackValueType.Int4, value = *opv };
+                        *(stack++) = new StackValue { type = StackValueType.i4, value = *opv };
                     }
                     goto NEXT;
                 case ILOpCode.Ldc_i4:
                     {
-                        *(stack++) = new StackValue { type = StackValueType.Int4, value = *(int*)opv };
+                        *(stack++) = new StackValue { type = StackValueType.i4, value = *(int*)opv };
                     }
                     goto NEXT;
                 case ILOpCode.Ldc_i8:
                     {
-                        *(stack++) = new StackValue { type = StackValueType.Int8, value = *(long*)opv };
+                        *(stack++) = new StackValue { type = StackValueType.i8, value = *(long*)opv };
                     }
                     goto NEXT;
                 case ILOpCode.Ldc_r4:
                     {
-                        *(stack++) = new StackValue { type = StackValueType.Real4, r4 = *(float*)opv };
+                        *(stack++) = new StackValue { type = StackValueType.r4, r4 = *(float*)opv };
                     }
                     goto NEXT;
                 case ILOpCode.Ldc_r8:
                     {
-                        *(stack++) = new StackValue { type = StackValueType.Real8, r8 = *(double*)opv };
+                        *(stack++) = new StackValue { type = StackValueType.r8, r8 = *(double*)opv };
                     }
                     goto NEXT;
                 #endregion
@@ -309,7 +312,8 @@ namespace VCSharp
 
                 case ILOpCode.Call:
                     {
-                        var m = methods[*opv];
+                        var m = VAppDomain.Current.Methods[*(int*)opv];
+                        
                         var parameters = m.GetParameters();
                         object[] param = null;
                         if (parameters != null)
@@ -327,10 +331,12 @@ namespace VCSharp
                         m.Invoke(null, param);
                     }
                     goto NEXT;
+
                 case ILOpCode.Calli:
                     {
                     }
                     goto NEXT;
+
                 case ILOpCode.Ret:
                     {
                         return;
@@ -384,34 +390,194 @@ namespace VCSharp
                     goto NEXT;
                 case ILOpCode.Beq:
                     {
-                        if ((--stack)->value == (--stack)->value)
+                        v1 = --stack;
+                        v2 = --stack;
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            ops = (seek + *(int*)opv);
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->u4 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->u8 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v1->u8 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v1->u8 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.b_b: if (v1->b == v2->b) break; goto NEXT;
+                            default: if (v1->value == v2->value) break; goto NEXT;
                         }
+                        ops = (seek + *(int*)opv);
                     }
                     goto NEXT;
                 case ILOpCode.Beq_s:
                     {
-                        if ((--stack)->value == (--stack)->value)
+                        v1 = --stack;
+                        v2 = --stack;
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            ops = (seek + *opv);
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->u4 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->u8 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v1->u8 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v1->u8 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 == v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 == v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 == v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 == v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 == v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 == v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.b_b: if (v1->b == v2->b) break; goto NEXT;
+                            default: if (v1->value == v2->value) break; goto NEXT;
                         }
+                        ops = (seek + *opv);
                     }
                     goto NEXT;
                 case ILOpCode.Bne_un:
                     {
-                        if ((--stack)->value != (--stack)->value)
+                        v1 = --stack;
+                        v2 = --stack;
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            ops = (seek + *(int*)opv);
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->u4 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->u8 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v1->u8 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v1->u8 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.b_b: if (v1->b != v2->b) break; goto NEXT;
+                            default: if (v1->value != v2->value) break; goto NEXT;
                         }
+                        ops = (seek + *(int*)opv);
                     }
                     goto NEXT;
                 case ILOpCode.Bne_un_s:
                     {
-                        if ((--stack)->value == (--stack)->value)
+                        v1 = --stack;
+                        v2 = --stack;
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            ops = (seek + *opv);
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->u4 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->u8 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v1->u8 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v1->u8 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 != v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 != v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 != v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 != v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 != v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 != v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.b_b: if (v1->b != v2->b) break; goto NEXT;
+                            default: if (v1->value != v2->value) break; goto NEXT;
                         }
+                        ops = (seek + *opv);
                     }
                     goto NEXT;
                 #endregion Br
@@ -421,45 +587,47 @@ namespace VCSharp
                     {
                         v1 = --stack;
                         v2 = --stack;
-                        switch ((StackValueTypeCompare)(v1->typeNum * 6 + v2->typeNum))
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            case StackValueTypeCompare.Int4_Int4: if (v1->i4 >= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Int8: if (v1->i4 >= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Unt4: if (v1->i4 >= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Unt8: if (v1->i4 >= 0 && v1->u4 >= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Real4: if (v1->i4 >= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Real8: if (v1->i4 >= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Int4: if (v1->i8 >= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Int8: if (v1->i8 >= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Unt4: if (v1->i8 >= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Unt8: if (v1->i8 >= 0 && v1->u8 >= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Real4: if (v1->i8 >= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Real8: if (v1->i8 >= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Int4: if (v1->u4 >= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Int8: if (v1->u4 >= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt4: if (v1->u4 >= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt8: if (v1->u4 >= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Real4: if (v1->u4 >= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Real8: if (v1->u4 >= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Int4: if (v2->i4 >= 0 && v1->u8 >= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Int8: if (v2->i8 >= 0 && v1->u8 >= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt4: if (v1->u8 >= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt8: if (v1->u8 >= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Real4: if (v1->u8 >= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Real8: if (v1->u8 >= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Int4: if (v1->r4 >= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Int8: if (v1->r4 >= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Unt4: if (v1->r4 >= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Unt8: if (v1->r4 >= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Real4: if (v1->r4 >= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Real8: if (v1->r4 >= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Int4: if (v1->r8 >= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Int8: if (v1->r8 >= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Unt4: if (v1->r8 >= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Unt8: if (v1->r8 >= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Real4: if (v1->r8 >= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Real8: if (v1->r8 >= v2->r8) { ops = (seek + *(int*)opv); } break;
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 >= 0 && v1->u4 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 >= 0 && v1->u8 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 >= 0 && v1->u8 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 >= 0 && v1->u8 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 >= v2->r8) break; goto NEXT;
+                            default: throw new Exception("Invalid operation");
                         }
+                        ops = (seek + *(int*)opv);
                     }
                     goto NEXT;
                 case ILOpCode.Bge_s:
@@ -467,45 +635,47 @@ namespace VCSharp
                     {
                         v1 = --stack;
                         v2 = --stack;
-                        switch ((StackValueTypeCompare)(v1->typeNum * 6 + v2->typeNum))
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            case StackValueTypeCompare.Int4_Int4: if (v1->i4 >= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Int8: if (v1->i4 >= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Unt4: if (v1->i4 >= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Unt8: if (v1->i4 >= 0 && v1->u4 >= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Real4: if (v1->i4 >= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Real8: if (v1->i4 >= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Int4: if (v1->i8 >= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Int8: if (v1->i8 >= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Unt4: if (v1->i8 >= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Unt8: if (v1->i8 >= 0 && v1->u8 >= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Real4: if (v1->i8 >= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Real8: if (v1->i8 >= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Int4: if (v1->u4 >= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Int8: if (v1->u4 >= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt4: if (v1->u4 >= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt8: if (v1->u4 >= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Real4: if (v1->u4 >= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Real8: if (v1->u4 >= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Int4: if (v2->i4 < 0 || v1->u8 >= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Int8: if (v2->i8 < 0 || v1->u8 >= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt4: if (v1->u8 >= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt8: if (v1->u8 >= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Real4: if (v1->u8 >= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Real8: if (v1->u8 >= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Int4: if (v1->r4 >= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Int8: if (v1->r4 >= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Unt4: if (v1->r4 >= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Unt8: if (v1->r4 >= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Real4: if (v1->r4 >= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Real8: if (v1->r4 >= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Int4: if (v1->r8 >= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Int8: if (v1->r8 >= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Unt4: if (v1->r8 >= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Unt8: if (v1->r8 >= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Real4: if (v1->r8 >= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Real8: if (v1->r8 >= v2->r8) { ops = (seek + *opv); } break;
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 >= 0 && v1->u4 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 >= 0 && v1->u8 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 >= 0 && v1->u8 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 >= 0 && v1->u8 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 >= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 >= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 >= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 >= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 >= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 >= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 >= v2->r8) break; goto NEXT;
+                            default: throw new Exception("Invalid operation");
                         }
+                        ops = (seek + *opv);
                     }
                     goto NEXT;
                 #endregion Bge
@@ -515,45 +685,47 @@ namespace VCSharp
                     {
                         v1 = --stack;
                         v2 = --stack;
-                        switch ((StackValueTypeCompare)(v1->typeNum * 6 + v2->typeNum))
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            case StackValueTypeCompare.Int4_Int4: if (v1->i4 > v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Int8: if (v1->i4 > v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Unt4: if (v1->i4 > v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Unt8: if (v1->i4 > 0 && v1->u4 > v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Real4: if (v1->i4 > v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Real8: if (v1->i4 > v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Int4: if (v1->i8 > v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Int8: if (v1->i8 > v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Unt4: if (v1->i8 > v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Unt8: if (v1->i8 > 0 && v1->u8 > v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Real4: if (v1->i8 > v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Real8: if (v1->i8 > v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Int4: if (v1->u4 > v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Int8: if (v1->u4 > v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt4: if (v1->u4 > v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt8: if (v1->u4 > v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Real4: if (v1->u4 > v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Real8: if (v1->u4 > v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Int4: if (v2->i4 < 0 || v1->u8 > v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Int8: if (v2->i8 < 0 || v1->u8 > v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt4: if (v1->u8 > v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt8: if (v1->u8 > v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Real4: if (v1->u8 > v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Real8: if (v1->u8 > v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Int4: if (v1->r4 > v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Int8: if (v1->r4 > v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Unt4: if (v1->r4 > v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Unt8: if (v1->r4 > v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Real4: if (v1->r4 > v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Real8: if (v1->r4 > v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Int4: if (v1->r8 > v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Int8: if (v1->r8 > v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Unt4: if (v1->r8 > v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Unt8: if (v1->r8 > v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Real4: if (v1->r8 > v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Real8: if (v1->r8 > v2->r8) { ops = (seek + *(int*)opv); } break;
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 > 0 && v1->u4 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 > 0 && v1->u8 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 < 0 || v1->u8 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 < 0 || v1->u8 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 > v2->r8) break; goto NEXT;
+                            default: throw new Exception("Invalid operation");
                         }
+                        ops = (seek + *(int*)opv);
                     }
                     goto NEXT;
                 case ILOpCode.Bgt_s:
@@ -561,233 +733,243 @@ namespace VCSharp
                     {
                         v1 = --stack;
                         v2 = --stack;
-                        switch ((StackValueTypeCompare)(v1->typeNum * 6 + v2->typeNum))
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            case StackValueTypeCompare.Int4_Int4: if (v1->i4 > v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Int8: if (v1->i4 > v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Unt4: if (v1->i4 > v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Unt8: if (v1->i4 > 0 && v1->u4 > v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Real4: if (v1->i4 > v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Real8: if (v1->i4 > v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Int4: if (v1->i8 > v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Int8: if (v1->i8 > v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Unt4: if (v1->i8 > v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Unt8: if (v1->i8 > 0 && v1->u8 > v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Real4: if (v1->i8 > v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Real8: if (v1->i8 > v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Int4: if (v1->u4 > v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Int8: if (v1->u4 > v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt4: if (v1->u4 > v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt8: if (v1->u4 > v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Real4: if (v1->u4 > v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Real8: if (v1->u4 > v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Int4: if (v2->i4 < 0 || v1->u8 > v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Int8: if (v2->i8 < 0 || v1->u8 > v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt4: if (v1->u8 > v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt8: if (v1->u8 > v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Real4: if (v1->u8 > v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Real8: if (v1->u8 > v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Int4: if (v1->r4 > v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Int8: if (v1->r4 > v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Unt4: if (v1->r4 > v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Unt8: if (v1->r4 > v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Real4: if (v1->r4 > v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Real8: if (v1->r4 > v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Int4: if (v1->r8 > v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Int8: if (v1->r8 > v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Unt4: if (v1->r8 > v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Unt8: if (v1->r8 > v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Real4: if (v1->r8 > v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Real8: if (v1->r8 > v2->r8) { ops = (seek + *opv); } break;
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 > 0 && v1->u4 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 > 0 && v1->u8 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 < 0 || v1->u8 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 < 0 || v1->u8 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 > v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 > v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 > v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 > v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 > v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 > v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 > v2->r8) break; goto NEXT;
+                            default: throw new Exception("Invalid operation");
                         }
+                        ops = (seek + *opv);
                     }
                     goto NEXT;
                 #endregion Bgt
                 #region Ble(a >= b)
                 case ILOpCode.Ble:
-                case ILOpCode.Ble_s:
+                case ILOpCode.Ble_un:
                     {
                         v1 = --stack;
                         v2 = --stack;
-                        switch ((StackValueTypeCompare)(v1->typeNum * 6 + v2->typeNum))
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            case StackValueTypeCompare.Int4_Int4: if (v1->i4 <= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Int8: if (v1->i4 <= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Unt4: if (v1->i4 <= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Unt8: if (v1->i4 < 0 || v1->u4 <= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Real4: if (v1->i4 <= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Real8: if (v1->i4 <= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Int4: if (v1->i8 <= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Int8: if (v1->i8 <= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Unt4: if (v1->i8 <= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Unt8: if (v1->i8 < 0 || v1->u8 <= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Real4: if (v1->i8 <= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Real8: if (v1->i8 <= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Int4: if (v1->u4 <= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Int8: if (v1->u4 <= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt4: if (v1->u4 <= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt8: if (v1->u4 <= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Real4: if (v1->u4 <= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Real8: if (v1->u4 <= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Int4: if (v2->i4 > 0 && v1->u8 <= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Int8: if (v2->i8 > 0 && v1->u8 <= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt4: if (v1->u8 <= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt8: if (v1->u8 <= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Real4: if (v1->u8 <= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Real8: if (v1->u8 <= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Int4: if (v1->r4 <= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Int8: if (v1->r4 <= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Unt4: if (v1->r4 <= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Unt8: if (v1->r4 <= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Real4: if (v1->r4 <= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Real8: if (v1->r4 <= v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Int4: if (v1->r8 <= v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Int8: if (v1->r8 <= v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Unt4: if (v1->r8 <= v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Unt8: if (v1->r8 <= v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Real4: if (v1->r8 <= v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Real8: if (v1->r8 <= v2->r8) { ops = (seek + *(int*)opv); } break;
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 < 0 || v1->u4 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 < 0 || v1->u8 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 > 0 && v1->u8 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 > 0 && v1->u8 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 <= v2->r8) break; goto NEXT;
+                            default: throw new Exception("Invalid operation");
                         }
+                        ops = (seek + *(int*)opv);
                     }
                     goto NEXT;
-                case ILOpCode.Ble_un:
+                case ILOpCode.Ble_s:
                 case ILOpCode.Ble_un_s:
                     {
                         v1 = --stack;
                         v2 = --stack;
-                        switch ((StackValueTypeCompare)(v1->typeNum * 6 + v2->typeNum))
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            case StackValueTypeCompare.Int4_Int4: if (v1->i4 <= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Int8: if (v1->i4 <= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Unt4: if (v1->i4 <= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Unt8: if (v1->i4 < 0 || v1->u4 <= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Real4: if (v1->i4 <= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Real8: if (v1->i4 <= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Int4: if (v1->i8 <= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Int8: if (v1->i8 <= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Unt4: if (v1->i8 <= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Unt8: if (v1->i8 < 0 || v1->u8 <= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Real4: if (v1->i8 <= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Real8: if (v1->i8 <= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Int4: if (v1->u4 <= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Int8: if (v1->u4 <= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt4: if (v1->u4 <= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt8: if (v1->u4 <= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Real4: if (v1->u4 <= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Real8: if (v1->u4 <= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Int4: if (v2->i4 >= 0 && v1->u8 <= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Int8: if (v2->i8 >= 0 && v1->u8 <= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt4: if (v1->u8 <= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt8: if (v1->u8 <= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Real4: if (v1->u8 <= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Real8: if (v1->u8 <= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Int4: if (v1->r4 <= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Int8: if (v1->r4 <= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Unt4: if (v1->r4 <= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Unt8: if (v1->r4 <= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Real4: if (v1->r4 <= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Real8: if (v1->r4 <= v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Int4: if (v1->r8 <= v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Int8: if (v1->r8 <= v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Unt4: if (v1->r8 <= v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Unt8: if (v1->r8 <= v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Real4: if (v1->r8 <= v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Real8: if (v1->r8 <= v2->r8) { ops = (seek + *opv); } break;
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 < 0 || v1->u4 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 < 0 || v1->u8 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 >= 0 && v1->u8 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 >= 0 && v1->u8 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 <= v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 <= v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 <= v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 <= v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 <= v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 <= v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 <= v2->r8) break; goto NEXT;
+                            default: throw new Exception("Invalid operation");
                         }
+                        ops = (seek + *opv);
                     }
                     goto NEXT;
                 #endregion Ble
                 #region Blt(a > b)
                 case ILOpCode.Blt:
-                case ILOpCode.Blt_s:
+                case ILOpCode.Blt_un:
                     {
                         v1 = --stack;
                         v2 = --stack;
-                        switch ((StackValueTypeCompare)(v1->typeNum * 6 + v2->typeNum))
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            case StackValueTypeCompare.Int4_Int4: if (v1->i4 < v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Int8: if (v1->i4 < v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Unt4: if (v1->i4 < v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Unt8: if (v1->i4 < 0 || v1->u4 < v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Real4: if (v1->i4 < v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int4_Real8: if (v1->i4 < v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Int4: if (v1->i8 < v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Int8: if (v1->i8 < v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Unt4: if (v1->i8 < v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Unt8: if (v1->i8 < 0 || v1->u8 < v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Real4: if (v1->i8 < v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Int8_Real8: if (v1->i8 < v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Int4: if (v1->u4 < v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Int8: if (v1->u4 < v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt4: if (v1->u4 < v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt8: if (v1->u4 < v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Real4: if (v1->u4 < v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt4_Real8: if (v1->u4 < v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Int4: if (v2->i4 > 0 && v1->u8 < v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Int8: if (v2->i8 > 0 && v1->u8 < v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt4: if (v1->u8 < v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt8: if (v1->u8 < v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Real4: if (v1->u8 < v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Unt8_Real8: if (v1->u8 < v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Int4: if (v1->r4 < v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Int8: if (v1->r4 < v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Unt4: if (v1->r4 < v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Unt8: if (v1->r4 < v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Real4: if (v1->r4 < v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real4_Real8: if (v1->r4 < v2->r8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Int4: if (v1->r8 < v2->i4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Int8: if (v1->r8 < v2->i8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Unt4: if (v1->r8 < v2->u4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Unt8: if (v1->r8 < v2->u8) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Real4: if (v1->r8 < v2->r4) { ops = (seek + *(int*)opv); } break;
-                            case StackValueTypeCompare.Real8_Real8: if (v1->r8 < v2->r8) { ops = (seek + *(int*)opv); } break;
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 < 0 || v1->u4 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 < 0 || v1->u8 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 > 0 && v1->u8 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 > 0 && v1->u8 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 < v2->r8) break; goto NEXT;
+                            default: throw new Exception("Invalid operation");
                         }
+                        ops = (seek + *(int*)opv);
                     }
                     goto NEXT;
-                case ILOpCode.Blt_un:
+                case ILOpCode.Blt_s:
                 case ILOpCode.Blt_un_s:
                     {
                         v1 = --stack;
                         v2 = --stack;
-                        switch ((StackValueTypeCompare)(v1->typeNum * 6 + v2->typeNum))
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            case StackValueTypeCompare.Int4_Int4: if (v1->i4 < v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Int8: if (v1->i4 < v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Unt4: if (v1->i4 < v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Unt8: if (v1->i4 < 0 || v1->u4 < v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Real4: if (v1->i4 < v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int4_Real8: if (v1->i4 < v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Int4: if (v1->i8 < v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Int8: if (v1->i8 < v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Unt4: if (v1->i8 < v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Unt8: if (v1->i8 < 0 || v1->u8 < v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Real4: if (v1->i8 < v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Int8_Real8: if (v1->i8 < v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Int4: if (v1->u4 < v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Int8: if (v1->u4 < v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt4: if (v1->u4 < v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Unt8: if (v1->u4 < v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Real4: if (v1->u4 < v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt4_Real8: if (v1->u4 < v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Int4: if (v2->i4 >= 0 && v1->u8 < v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Int8: if (v2->i8 >= 0 && v1->u8 < v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt4: if (v1->u8 < v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Unt8: if (v1->u8 < v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Real4: if (v1->u8 < v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Unt8_Real8: if (v1->u8 < v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Int4: if (v1->r4 < v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Int8: if (v1->r4 < v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Unt4: if (v1->r4 < v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Unt8: if (v1->r4 < v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Real4: if (v1->r4 < v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real4_Real8: if (v1->r4 < v2->r8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Int4: if (v1->r8 < v2->i4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Int8: if (v1->r8 < v2->i8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Unt4: if (v1->r8 < v2->u4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Unt8: if (v1->r8 < v2->u8) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Real4: if (v1->r8 < v2->r4) { ops = (seek + *opv); } break;
-                            case StackValueTypeCompare.Real8_Real8: if (v1->r8 < v2->r8) { ops = (seek + *opv); } break;
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 < 0 || v1->u4 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 < 0 || v1->u8 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 >= 0 && v1->u8 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 >= 0 && v1->u8 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 < v2->r8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 < v2->i4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 < v2->i8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 < v2->u4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 < v2->u8) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 < v2->r4) break; goto NEXT;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 < v2->r8) break; goto NEXT;
+                            default: throw new Exception("Invalid operation");
                         }
+                        ops = (seek + *opv);
                     }
                     goto NEXT;
                 #endregion
@@ -871,139 +1053,884 @@ namespace VCSharp
                     {
                     }
                     goto NEXT;
+
+                #region 사칙연산-------------------------------------------------------
                 case ILOpCode.Add:
                     {
                         v2 = (--stack);
                         v1 = (stack - 1);
-                        switch ((StackValueTypeCompare)(v1->typeNum * 6 + v2->typeNum))
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                         {
-                            case StackValueTypeCompare.Int4_Int4: v1->i4 = v1->i4 + v2->i4; break;
-                            case StackValueTypeCompare.Int4_Int8: v1->i4 = v1->i4 + v2->i8;  break;
-                            case StackValueTypeCompare.Int4_Unt4: v1->i4 = v1->i4 + v2->u4; break;
-                            case StackValueTypeCompare.Int4_Unt8: v1->i4 = v1->i4 + v2->u8; break;
-                            case StackValueTypeCompare.Int4_Real4: v1->i4 = v1->i4 + v2->r4; break;
-                            case StackValueTypeCompare.Int4_Real8: v1->i4 = v1->i4 + v2->r8; break;
-                            case StackValueTypeCompare.Int8_Int4: v1->i8 = v1->i8 + v2->i4; break;
-                            case StackValueTypeCompare.Int8_Int8: v1->i8 = v1->i8 + v2->i8; break;
-                            case StackValueTypeCompare.Int8_Unt4: v1->i8 = v1->i8 + v2->u4; break;
-                            case StackValueTypeCompare.Int8_Unt8: v1->i8 = v1->i8 + v2->u8; break;
-                            case StackValueTypeCompare.Int8_Real4: v1->i8 = v1->i8 + v2->r4; break;
-                            case StackValueTypeCompare.Int8_Real8: v1->i8 = v1->i8 + v2->r8; break;
-                            case StackValueTypeCompare.Unt4_Int4: v1->u4 = v1->u4 + v2->i4; break;
-                            case StackValueTypeCompare.Unt4_Int8: v1->u4 = v1->u4 + v2->i8; break;
-                            case StackValueTypeCompare.Unt4_Unt4: v1->u4 = v1->u4 + v2->u4; break;
-                            case StackValueTypeCompare.Unt4_Unt8: v1->u8 = v1->u4 + v2->u8; v1->type = StackValueType.Unt8; break;
-                            case StackValueTypeCompare.Unt4_Real4: throw new Exception("Invalid operation"); //  v1->u4 = v1->u4 + v2->r4; break;
-                            case StackValueTypeCompare.Unt4_Real8: throw new Exception("Invalid operation"); //  v1->u4 = v1->u4 + v2->r8; break;
-                            case StackValueTypeCompare.Unt8_Int4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 + v2->i4; break;
-                            case StackValueTypeCompare.Unt8_Int8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 + v2->i8; break;
-                            case StackValueTypeCompare.Unt8_Unt4: v1->u8 = v1->u8 + v2->u4; break;
-                            case StackValueTypeCompare.Unt8_Unt8: v1->u8 = v1->u8 + v2->u8; break;
-                            case StackValueTypeCompare.Unt8_Real4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 + v2->r4; break;
-                            case StackValueTypeCompare.Unt8_Real8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 + v2->r8; break;
-                            case StackValueTypeCompare.Real4_Int4: v1->r4 = v1->r4 + v2->i4; break;
-                            case StackValueTypeCompare.Real4_Int8: v1->r4 = v1->r4 + v2->i8; break;
-                            case StackValueTypeCompare.Real4_Unt4: v1->r4 = v1->r4 + v2->u4; break;
-                            case StackValueTypeCompare.Real4_Unt8: v1->r4 = v1->r4 + v2->u8; break;
-                            case StackValueTypeCompare.Real4_Real4: v1->r4 = v1->r4 + v2->r4; break;
-                            case StackValueTypeCompare.Real4_Real8: v1->r8 = v1->r4 + v2->r8; v1->type = StackValueType.Real8; break;
-                            case StackValueTypeCompare.Real8_Int4: v1->r8 = v1->r8 + v2->i4; break;
-                            case StackValueTypeCompare.Real8_Int8: v1->r8 = v1->r8 + v2->i8; break;
-                            case StackValueTypeCompare.Real8_Unt4: v1->r8 = v1->r8 + v2->u4; break;
-                            case StackValueTypeCompare.Real8_Unt8: v1->r8 = v1->r8 + v2->u8; break;
-                            case StackValueTypeCompare.Real8_Real4: v1->r8 = v1->r8 + v2->r4; break;
-                            case StackValueTypeCompare.Real8_Real8: v1->r8 = v1->r8 + v2->r8; break;
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 + v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: v1->i8 = v1->i4 + v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 + v2->u4; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 + v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: v1->r4 = v1->i4 + v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: v1->r8 = v1->i4 + v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 + v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: v1->i8 = v1->i8 + v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: v1->i8 = v1->i8 + v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 + v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: v1->r4 = v1->i8 + v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: v1->r8 = v1->i8 + v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: throw new Exception("Invalid operation"); // v1->u4 = v1->u4 + v2->i4; break;
+                            case StackValueTypeCompare.u4_i8: v1->i8 = v1->u4 + v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: v1->u4 = v1->u4 + v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: v1->u8 = v1->u4 + v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: v1->r4 = v1->u4 + v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: v1->r8 = v1->u4 + v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 + v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 + v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: v1->u8 = v1->u8 + v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: v1->u8 = v1->u8 + v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: v1->r4 = v1->u8 + v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: v1->r8 = v1->u8 + v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: v1->r4 = v1->r4 + v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: v1->r4 = v1->r4 + v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: v1->r4 = v1->r4 + v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: v1->r4 = v1->r4 + v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: v1->r4 = v1->r4 + v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: v1->r8 = v1->r4 + v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: v1->r8 = v1->r8 + v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: v1->r8 = v1->r8 + v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: v1->r8 = v1->r8 + v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: v1->r8 = v1->r8 + v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: v1->r8 = v1->r8 + v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 + v2->r8; break;
+                            default: throw new Exception("Invalid operation");
                         }
                     }
                     goto NEXT;
                 case ILOpCode.Sub:
                     {
+                        v2 = (--stack);
+                        v1 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 - v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: v1->i8 = v1->i4 - v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 - v2->u4; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 - v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: v1->r4 = v1->i4 - v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: v1->r8 = v1->i4 - v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 - v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: v1->i8 = v1->i8 - v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: v1->i8 = v1->i8 - v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 - v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: v1->r4 = v1->i8 - v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: v1->r8 = v1->i8 - v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: throw new Exception("Invalid operation"); // v1->u4 = v1->u4 - v2->i4; break;
+                            case StackValueTypeCompare.u4_i8: v1->i8 = v1->u4 - v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: v1->u4 = v1->u4 - v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: v1->u8 = v1->u4 - v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: v1->r4 = v1->u4 - v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: v1->r8 = v1->u4 - v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 - v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 - v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: v1->u8 = v1->u8 - v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: v1->u8 = v1->u8 - v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: v1->r4 = v1->u8 - v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: v1->r8 = v1->u8 - v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: v1->r4 = v1->r4 - v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: v1->r4 = v1->r4 - v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: v1->r4 = v1->r4 - v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: v1->r4 = v1->r4 - v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: v1->r4 = v1->r4 - v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: v1->r8 = v1->r4 - v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: v1->r8 = v1->r8 - v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: v1->r8 = v1->r8 - v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: v1->r8 = v1->r8 - v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: v1->r8 = v1->r8 - v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: v1->r8 = v1->r8 - v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 - v2->r8; break;
+                            default: throw new Exception("Invalid operation");
+                        }
                     }
                     goto NEXT;
                 case ILOpCode.Mul:
                     {
+                        v2 = (--stack);
+                        v1 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 * v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: v1->i8 = v1->i4 * v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 * v2->u4; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 * v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: v1->r4 = v1->i4 * v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: v1->r8 = v1->i4 * v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 * v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: v1->i8 = v1->i8 * v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: v1->i8 = v1->i8 * v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 * v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: v1->r4 = v1->i8 * v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: v1->r8 = v1->i8 * v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: throw new Exception("Invalid operation"); // v1->u4 = v1->u4 * v2->i4; break;
+                            case StackValueTypeCompare.u4_i8: v1->i8 = v1->u4 * v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: v1->u4 = v1->u4 * v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: v1->u8 = v1->u4 * v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: v1->r4 = v1->u4 * v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: v1->r8 = v1->u4 * v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 * v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 * v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: v1->u8 = v1->u8 * v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: v1->u8 = v1->u8 * v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: v1->r4 = v1->u8 * v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: v1->r8 = v1->u8 * v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: v1->r4 = v1->r4 * v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: v1->r4 = v1->r4 * v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: v1->r4 = v1->r4 * v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: v1->r4 = v1->r4 * v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: v1->r4 = v1->r4 * v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: v1->r8 = v1->r4 * v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: v1->r8 = v1->r8 * v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: v1->r8 = v1->r8 * v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: v1->r8 = v1->r8 * v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: v1->r8 = v1->r8 * v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: v1->r8 = v1->r8 * v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 * v2->r8; break;
+                            default: throw new Exception("Invalid operation");
+                        }
                     }
                     goto NEXT;
                 case ILOpCode.Div:
-                    {
-                    }
-                    goto NEXT;
                 case ILOpCode.Div_un:
                     {
+                        v2 = (--stack);
+                        v1 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 / v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: v1->i8 = v1->i4 / v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 / v2->u4; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 / v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: v1->r4 = v1->i4 / v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: v1->r8 = v1->i4 / v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 / v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: v1->i8 = v1->i8 / v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: v1->i8 = v1->i8 / v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 / v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: v1->r4 = v1->i8 / v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: v1->r8 = v1->i8 / v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: throw new Exception("Invalid operation"); // v1->u4 = v1->u4 / v2->i4; break;
+                            case StackValueTypeCompare.u4_i8: v1->i8 = v1->u4 / v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: v1->u4 = v1->u4 / v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: v1->u8 = v1->u4 / v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: v1->r4 = v1->u4 / v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: v1->r8 = v1->u4 / v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 / v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 / v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: v1->u8 = v1->u8 / v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: v1->u8 = v1->u8 / v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: v1->r4 = v1->u8 / v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: v1->r8 = v1->u8 / v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: v1->r4 = v1->r4 / v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: v1->r4 = v1->r4 / v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: v1->r4 = v1->r4 / v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: v1->r4 = v1->r4 / v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: v1->r4 = v1->r4 / v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: v1->r8 = v1->r4 / v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: v1->r8 = v1->r8 / v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: v1->r8 = v1->r8 / v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: v1->r8 = v1->r8 / v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: v1->r8 = v1->r8 / v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: v1->r8 = v1->r8 / v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 / v2->r8; break;
+                            default: throw new Exception("Invalid operation");
+                        }
                     }
                     goto NEXT;
                 case ILOpCode.Rem:
-                    {
-                    }
-                    goto NEXT;
                 case ILOpCode.Rem_un:
                     {
+                        v2 = (--stack);
+                        v1 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 % v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: v1->i8 = v1->i4 % v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 % v2->u4; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 % v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: v1->r4 = v1->i4 % v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: v1->r8 = v1->i4 % v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 % v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: v1->i8 = v1->i8 % v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: v1->i8 = v1->i8 % v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 % v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: v1->r4 = v1->i8 % v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: v1->r8 = v1->i8 % v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: throw new Exception("Invalid operation"); // v1->u4 = v1->u4 % v2->i4; break;
+                            case StackValueTypeCompare.u4_i8: v1->i8 = v1->u4 % v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: v1->u4 = v1->u4 % v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: v1->u8 = v1->u4 % v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: v1->r4 = v1->u4 % v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: v1->r8 = v1->u4 % v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 % v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 % v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: v1->u8 = v1->u8 % v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: v1->u8 = v1->u8 % v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: v1->r4 = v1->u8 % v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: v1->r8 = v1->u8 % v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: v1->r4 = v1->r4 % v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: v1->r4 = v1->r4 % v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: v1->r4 = v1->r4 % v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: v1->r4 = v1->r4 % v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: v1->r4 = v1->r4 % v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: v1->r8 = v1->r4 % v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: v1->r8 = v1->r8 % v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: v1->r8 = v1->r8 % v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: v1->r8 = v1->r8 % v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: v1->r8 = v1->r8 % v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: v1->r8 = v1->r8 % v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 % v2->r8; break;
+                            default: throw new Exception("Invalid operation");
+                        }
                     }
                     goto NEXT;
+                #endregion 사칙연산-------------------------------------------------------
+                #region 비트연산-------------------------------------------------------
                 case ILOpCode.And:
                     {
+                        v2 = (--stack);
+                        v1 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 & v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: v1->i8 = v1->i4 & v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: v1->i8 = v1->i4 & v2->u4; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 & v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->i4 & v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->i4 & v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 & v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: v1->i8 = v1->i8 & v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: v1->i8 = v1->i8 & v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 & v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->i8 & v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->i8 & v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: v1->i8 = v1->u4 & v2->i4; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_i8: v1->i8 = v1->u4 & v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: v1->u4 = v1->u4 & v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: v1->u8 = v1->u4 & v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->u4 & v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->u4 & v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 & v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 & v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: v1->u8 = v1->u8 & v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: v1->u8 = v1->u8 & v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->u8 & v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->u8 & v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 & v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 & v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 & v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 & v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 & v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r4 & v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 & v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 & v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 & v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 & v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 & v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 & v2->r8; break;
+                            case StackValueTypeCompare.b_b: v1->b = v1->b & v2->b; break;
+                            default: throw new Exception("Invalid operation");
+                        }
                     }
                     goto NEXT;
                 case ILOpCode.Or:
                     {
+                        v2 = (--stack);
+                        v1 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 | v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: v1->i8 = (long)v1->i4 | v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: v1->i8 = (long)v1->i4 | (long)v2->u4; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 | v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->i4 | v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->i4 | v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 | (long)v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: v1->i8 = v1->i8 | v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: v1->i8 = v1->i8 | v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 | v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->i8 | v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->i8 | v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: v1->i8 = v1->u4 | (long)v2->i4; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_i8: v1->i8 = v1->u4 | v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: v1->u4 = v1->u4 | v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: v1->u8 = v1->u4 | v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->u4 | v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->u4 | v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 | v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 | v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: v1->u8 = v1->u8 | v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: v1->u8 = v1->u8 | v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->u8 | v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->u8 | v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 | v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 | v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 | v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 | v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 | v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r4 | v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 | v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 | v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 | v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 | v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 | v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 | v2->r8; break;
+                            case StackValueTypeCompare.b_b: v1->b = v1->b | v2->b; break;
+                            default: throw new Exception("Invalid operation");
+                        }
                     }
                     goto NEXT;
                 case ILOpCode.Xor:
                     {
-                    }
-                    goto NEXT;
-                case ILOpCode.Shl:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Shr:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Shr_un:
-                    {
+                        v2 = (--stack);
+                        v1 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 ^ v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: v1->i8 = v1->i4 ^ v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: v1->i8 = v1->i4 ^ v2->u4; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 ^ v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->i4 ^ v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->i4 ^ v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 ^ v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: v1->i8 = v1->i8 ^ v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: v1->i8 = v1->i8 ^ v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 ^ v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->i8 ^ v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->i8 ^ v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: v1->i8 = v1->u4 ^ v2->i4; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_i8: v1->i8 = v1->u4 ^ v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: v1->u4 = v1->u4 ^ v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: v1->u8 = v1->u4 ^ v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->u4 ^ v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->u4 ^ v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 ^ v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 ^ v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: v1->u8 = v1->u8 ^ v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: v1->u8 = v1->u8 ^ v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->u8 ^ v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->u8 ^ v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 ^ v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 ^ v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 ^ v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: throw new Exception("Invalid operation"); // v1->r4 = v1->r4 ^ v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 ^ v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r4 ^ v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 ^ v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 ^ v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 ^ v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 ^ v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 ^ v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 ^ v2->r8; break;
+                            case StackValueTypeCompare.b_b: v1->b = v1->b ^ v2->b; break;
+                            default: throw new Exception("Invalid operation");
+                        }
                     }
                     goto NEXT;
                 case ILOpCode.Neg:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i4 = -(v1->i4); break;
+                            case StackValueType.i8: v1->i8 = -(v1->i8); break;
+                            case StackValueType.u4: throw new Exception("Invalid operation"); // v1->u4 = -(v1->u4); break;
+                            case StackValueType.u8: throw new Exception("Invalid operation"); // v1->u8 = -(v1->u8); break;
+                            case StackValueType.r4: v1->r4 = -(v1->r4); break;
+                            case StackValueType.r8: v1->r8 = -(v1->r8); break;
+                            case StackValueType.b: v1->b = !(v1->b); break;
+                        }
                     }
                     goto NEXT;
                 case ILOpCode.Not:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i4 = ~(v1->i4); break;
+                            case StackValueType.i8: v1->i8 = ~(v1->i8); break;
+                            case StackValueType.u4: v1->u4 = ~(v1->u4); break;
+                            case StackValueType.u8: v1->u8 = ~(v1->u8); break;
+                            case StackValueType.r4: throw new Exception("Invalid operation"); // v1->r4 = ~(v1->r4); break;
+                            case StackValueType.r8: throw new Exception("Invalid operation"); // v1->r8 = ~(v1->r8); break;
+                            case StackValueType.b: v1->b = !(v1->b); break;
+                        }
+                    }
+                    goto NEXT;
+                #endregion 비트연산-------------------------------------------------------
+                #region 비트쉬프트-------------------------------------------------------
+                case ILOpCode.Shl:
+                    {
+                        v2 = (--stack);
+                        v1 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 << v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: throw new Exception("Invalid operation"); // v1->i8 = v1->i4 << v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: throw new Exception("Invalid operation"); // v1->i8 = v1->i4 << v2->u4; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 << v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->i4 << v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->i4 << v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 << v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 << v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 << v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 << v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->i8 << v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->i8 << v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: v1->u4 = v1->u4 << v2->i4; v1->type = StackValueType.u4; break;
+                            case StackValueTypeCompare.u4_i8: throw new Exception("Invalid operation"); // v1->i8 = v1->u4 << v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: throw new Exception("Invalid operation"); // v1->u4 = v1->u4 << v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: throw new Exception("Invalid operation"); // v1->u8 = v1->u4 << v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->u4 << v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->u4 << v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: v1->u8 = v1->u8 << v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 << v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 << v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 << v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->u8 << v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->u8 << v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 << v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 << v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 << v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 << v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 << v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r4 << v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 << v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 << v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 << v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 << v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 << v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 << v2->r8; break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                    }
+                    goto NEXT;
+                case ILOpCode.Shr:
+                case ILOpCode.Shr_un:
+                    {
+                        v2 = (--stack);
+                        v1 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 >> v2->i4; break;
+                            case StackValueTypeCompare.i4_i8: throw new Exception("Invalid operation"); // v1->i8 = v1->i4 >> v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u4: throw new Exception("Invalid operation"); // v1->i8 = v1->i4 >> v2->u4; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 >> v2->u8; break;
+                            case StackValueTypeCompare.i4_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->i4 >> v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i4_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->i4 >> v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.i8_i4: v1->i8 = v1->i8 >> v2->i4; break;
+                            case StackValueTypeCompare.i8_i8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 >> v2->i8; break;
+                            case StackValueTypeCompare.i8_u4: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 >> v2->u4; break;
+                            case StackValueTypeCompare.i8_u8: throw new Exception("Invalid operation"); // v1->i8 = v1->i8 >> v2->u8; break;
+                            case StackValueTypeCompare.i8_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->i8 >> v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.i8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->i8 >> v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u4_i4: v1->u4 = v1->u4 >> v2->i4; v1->type = StackValueType.u4; break;
+                            case StackValueTypeCompare.u4_i8: throw new Exception("Invalid operation"); // v1->i8 = v1->u4 >> v2->i8; v1->type = StackValueType.i8; break;
+                            case StackValueTypeCompare.u4_u4: throw new Exception("Invalid operation"); // v1->u4 = v1->u4 >> v2->u4; break;
+                            case StackValueTypeCompare.u4_u8: throw new Exception("Invalid operation"); // v1->u8 = v1->u4 >> v2->u8; v1->type = StackValueType.u8; break;
+                            case StackValueTypeCompare.u4_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->u4 >> v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u4_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->u4 >> v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.u8_i4: v1->u8 = v1->u8 >> v2->i4; break;
+                            case StackValueTypeCompare.u8_i8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 >> v2->i8; break;
+                            case StackValueTypeCompare.u8_u4: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 >> v2->u4; break;
+                            case StackValueTypeCompare.u8_u8: throw new Exception("Invalid operation"); // v1->u8 = v1->u8 >> v2->u8; break;
+                            case StackValueTypeCompare.u8_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->u8 >> v2->r4; v1->type = StackValueType.r4; break;
+                            case StackValueTypeCompare.u8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->u8 >> v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r4_i4: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 >> v2->i4; break;
+                            case StackValueTypeCompare.r4_i8: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 >> v2->i8; break;
+                            case StackValueTypeCompare.r4_u4: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 >> v2->u4; break;
+                            case StackValueTypeCompare.r4_u8: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 >> v2->u8; break;
+                            case StackValueTypeCompare.r4_r4: throw new Exception("Invalid operation"); //  v1->r4 = v1->r4 >> v2->r4; break;
+                            case StackValueTypeCompare.r4_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r4 >> v2->r8; v1->type = StackValueType.r8; break;
+                            case StackValueTypeCompare.r8_i4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 >> v2->i4; break;
+                            case StackValueTypeCompare.r8_i8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 >> v2->i8; break;
+                            case StackValueTypeCompare.r8_u4: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 >> v2->u4; break;
+                            case StackValueTypeCompare.r8_u8: throw new Exception("Invalid operation"); // v1->r8 = v1->r8 >> v2->u8; break;
+                            case StackValueTypeCompare.r8_r4: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 >> v2->r4; break;
+                            case StackValueTypeCompare.r8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 >> v2->r8; break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                    }
+                    goto NEXT;
+                #endregion-------------------------------------------------------
+                #region Convert-------------------------------------------------------
+                #region Integer
+                case ILOpCode.Conv_i:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i8 = (nint)(v1->i4); break;
+                            case StackValueType.i8: v1->i8 = (nint)(v1->i8); break;
+                            case StackValueType.u4: v1->i8 = (nint)(v1->u4); break;
+                            case StackValueType.u8: v1->i8 = (nint)(v1->u8); break;
+                            case StackValueType.r4: v1->i8 = (nint)(v1->r4); break;
+                            case StackValueType.r8: v1->i8 = (nint)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i8;
                     }
                     goto NEXT;
                 case ILOpCode.Conv_i1:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i8 = (sbyte)(v1->i4); break;
+                            case StackValueType.i8: v1->i8 = (sbyte)(v1->i8); break;
+                            case StackValueType.u4: v1->i8 = (sbyte)(v1->u4); break;
+                            case StackValueType.u8: v1->i8 = (sbyte)(v1->u8); break;
+                            case StackValueType.r4: v1->i8 = (sbyte)(v1->r4); break;
+                            case StackValueType.r8: v1->i8 = (sbyte)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i4;
                     }
                     goto NEXT;
                 case ILOpCode.Conv_i2:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i8 = (short)(v1->i4); break;
+                            case StackValueType.i8: v1->i8 = (short)(v1->i8); break;
+                            case StackValueType.u4: v1->i8 = (short)(v1->u4); break;
+                            case StackValueType.u8: v1->i8 = (short)(v1->u8); break;
+                            case StackValueType.r4: v1->i8 = (short)(v1->r4); break;
+                            case StackValueType.r8: v1->i8 = (short)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i4;
                     }
                     goto NEXT;
                 case ILOpCode.Conv_i4:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: break;
+                            case StackValueType.i8: v1->i8 = (int)(v1->i8); break;
+                            case StackValueType.u4: v1->i8 = (int)(v1->u4); break;
+                            case StackValueType.u8: v1->i8 = (int)(v1->u8); break;
+                            case StackValueType.r4: v1->i8 = (int)(v1->r4); break;
+                            case StackValueType.r8: v1->i8 = (int)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i4;
                     }
                     goto NEXT;
                 case ILOpCode.Conv_i8:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i8 = (long)(v1->i4); break;
+                            case StackValueType.i8: break;
+                            case StackValueType.u4: v1->i8 = (long)(v1->u4); break;
+                            case StackValueType.u8: v1->i8 = (long)(v1->u8); break;
+                            case StackValueType.r4: v1->i8 = (long)(v1->r4); break;
+                            case StackValueType.r8: v1->i8 = (long)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i8;
                     }
                     goto NEXT;
+                case ILOpCode.Conv_ovf_i:
+                case ILOpCode.Conv_ovf_i_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i8 = checked((nint)(v1->i4)); break;
+                            case StackValueType.i8: v1->i8 = checked((nint)(v1->i8)); break;
+                            case StackValueType.u4: v1->i8 = checked((nint)(v1->u4)); break;
+                            case StackValueType.u8: v1->i8 = checked((nint)(v1->u8)); break;
+                            case StackValueType.r4: v1->i8 = checked((nint)(v1->r4)); break;
+                            case StackValueType.r8: v1->i8 = checked((nint)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i8;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_ovf_i1:
+                case ILOpCode.Conv_ovf_i1_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i8 = checked((sbyte)(v1->i4)); break;
+                            case StackValueType.i8: v1->i8 = checked((sbyte)(v1->i8)); break;
+                            case StackValueType.u4: v1->i8 = checked((sbyte)(v1->u4)); break;
+                            case StackValueType.u8: v1->i8 = checked((sbyte)(v1->u8)); break;
+                            case StackValueType.r4: v1->i8 = checked((sbyte)(v1->r4)); break;
+                            case StackValueType.r8: v1->i8 = checked((sbyte)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i4;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_ovf_i2:
+                case ILOpCode.Conv_ovf_i2_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i8 = checked((short)(v1->i4)); break;
+                            case StackValueType.i8: v1->i8 = checked((short)(v1->i8)); break;
+                            case StackValueType.u4: v1->i8 = checked((short)(v1->u4)); break;
+                            case StackValueType.u8: v1->i8 = checked((short)(v1->u8)); break;
+                            case StackValueType.r4: v1->i8 = checked((short)(v1->r4)); break;
+                            case StackValueType.r8: v1->i8 = checked((short)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i4;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_ovf_i4:
+                case ILOpCode.Conv_ovf_i4_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: break;
+                            case StackValueType.i8: v1->i8 = checked((int)(v1->i8)); break;
+                            case StackValueType.u4: v1->i8 = checked((int)(v1->u4)); break;
+                            case StackValueType.u8: v1->i8 = checked((int)(v1->u8)); break;
+                            case StackValueType.r4: v1->i8 = checked((int)(v1->r4)); break;
+                            case StackValueType.r8: v1->i8 = checked((int)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i4;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_ovf_i8:
+                case ILOpCode.Conv_ovf_i8_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->i8 = checked((long)(v1->i4)); break;
+                            case StackValueType.i8: break;
+                            case StackValueType.u4: v1->i8 = checked((long)(v1->u4)); break;
+                            case StackValueType.u8: v1->i8 = checked((long)(v1->u8)); break;
+                            case StackValueType.r4: v1->i8 = checked((long)(v1->r4)); break;
+                            case StackValueType.r8: v1->i8 = checked((long)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.i8;
+                    }
+                    goto NEXT;
+                #endregion Integer
+                #region Real
+                case ILOpCode.Conv_r_un:
                 case ILOpCode.Conv_r4:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->r4 = (float)(v1->i4); break;
+                            case StackValueType.i8: v1->r4 = (float)(v1->i8); break;
+                            case StackValueType.u4: v1->r4 = (float)(v1->u4); break;
+                            case StackValueType.u8: v1->r4 = (float)(v1->u8); break;
+                            case StackValueType.r4: v1->r4 = (float)(v1->r4); break;
+                            case StackValueType.r8: v1->r4 = (float)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.r4;
+                        v1->Last4 = 0;
                     }
                     goto NEXT;
                 case ILOpCode.Conv_r8:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->r8 = (double)(v1->i4); break;
+                            case StackValueType.i8: v1->r8 = (double)(v1->i8); break;
+                            case StackValueType.u4: v1->r8 = (double)(v1->u4); break;
+                            case StackValueType.u8: v1->r8 = (double)(v1->u8); break;
+                            case StackValueType.r4: v1->r8 = (double)(v1->r4); break;
+                            case StackValueType.r8: v1->r8 = (double)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.r8;
+                    }
+                    goto NEXT;
+                #endregion Real
+                #region Unsigned
+                case ILOpCode.Conv_u:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = (nuint)(v1->i4); break;
+                            case StackValueType.i8: v1->u8 = (nuint)(v1->i8); break;
+                            case StackValueType.u4: v1->u8 = (nuint)(v1->u4); break;
+                            case StackValueType.u8: v1->u8 = (nuint)(v1->u8); break;
+                            case StackValueType.r4: v1->u8 = (nuint)(v1->r4); break;
+                            case StackValueType.r8: v1->u8 = (nuint)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u8;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_u1:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = (byte)(v1->i4); break;
+                            case StackValueType.i8: v1->u8 = (byte)(v1->i8); break;
+                            case StackValueType.u4: v1->u8 = (byte)(v1->u4); break;
+                            case StackValueType.u8: v1->u8 = (byte)(v1->u8); break;
+                            case StackValueType.r4: v1->u8 = (byte)(v1->r4); break;
+                            case StackValueType.r8: v1->u8 = (byte)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u4;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_u2:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = (ushort)(v1->i4); break;
+                            case StackValueType.i8: v1->u8 = (ushort)(v1->i8); break;
+                            case StackValueType.u4: v1->u8 = (ushort)(v1->u4); break;
+                            case StackValueType.u8: v1->u8 = (ushort)(v1->u8); break;
+                            case StackValueType.r4: v1->u8 = (ushort)(v1->r4); break;
+                            case StackValueType.r8: v1->u8 = (ushort)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u4;
                     }
                     goto NEXT;
                 case ILOpCode.Conv_u4:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = (uint)(v1->i4); break;
+                            case StackValueType.i8: v1->u8 = (uint)(v1->i8); break;
+                            case StackValueType.u4: v1->u8 = (uint)(v1->u4); break;
+                            case StackValueType.u8: v1->u8 = (uint)(v1->u8); break;
+                            case StackValueType.r4: v1->u8 = (uint)(v1->r4); break;
+                            case StackValueType.r8: v1->u8 = (uint)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u4;
                     }
                     goto NEXT;
                 case ILOpCode.Conv_u8:
                     {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = (ulong)(v1->i4); break;
+                            case StackValueType.i8: v1->u8 = (ulong)(v1->i8); break;
+                            case StackValueType.u4: v1->u8 = (ulong)(v1->u4); break;
+                            case StackValueType.u8: v1->u8 = (ulong)(v1->u8); break;
+                            case StackValueType.r4: v1->u8 = (ulong)(v1->r4); break;
+                            case StackValueType.r8: v1->u8 = (ulong)(v1->r8); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u8;
                     }
                     goto NEXT;
+                case ILOpCode.Conv_ovf_u:
+                case ILOpCode.Conv_ovf_u_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = checked((nuint)(v1->i4)); break;
+                            case StackValueType.i8: v1->u8 = checked((nuint)(v1->i8)); break;
+                            case StackValueType.u4: v1->u8 = checked((nuint)(v1->u4)); break;
+                            case StackValueType.u8: v1->u8 = checked((nuint)(v1->u8)); break;
+                            case StackValueType.r4: v1->u8 = checked((nuint)(v1->r4)); break;
+                            case StackValueType.r8: v1->u8 = checked((nuint)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u8;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_ovf_u1:
+                case ILOpCode.Conv_ovf_u1_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = checked((byte)(v1->i4)); break;
+                            case StackValueType.i8: v1->u8 = checked((byte)(v1->i8)); break;
+                            case StackValueType.u4: v1->u8 = checked((byte)(v1->u4)); break;
+                            case StackValueType.u8: v1->u8 = checked((byte)(v1->u8)); break;
+                            case StackValueType.r4: v1->u8 = checked((byte)(v1->r4)); break;
+                            case StackValueType.r8: v1->u8 = checked((byte)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u4;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_ovf_u2:
+                case ILOpCode.Conv_ovf_u2_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = checked((ushort)(v1->i4)); break;
+                            case StackValueType.i8: v1->u8 = checked((ushort)(v1->i8)); break;
+                            case StackValueType.u4: v1->u8 = checked((ushort)(v1->u4)); break;
+                            case StackValueType.u8: v1->u8 = checked((ushort)(v1->u8)); break;
+                            case StackValueType.r4: v1->u8 = checked((ushort)(v1->r4)); break;
+                            case StackValueType.r8: v1->u8 = checked((ushort)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u4;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_ovf_u4:
+                case ILOpCode.Conv_ovf_u4_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = checked((uint)(v1->i4)); break;
+                            case StackValueType.i8: v1->u8 = checked((uint)(v1->i8)); break;
+                            case StackValueType.u4: v1->u8 = checked((uint)(v1->u4)); break;
+                            case StackValueType.u8: v1->u8 = checked((uint)(v1->u8)); break;
+                            case StackValueType.r4: v1->u8 = checked((uint)(v1->r4)); break;
+                            case StackValueType.r8: v1->u8 = checked((uint)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u4;
+                    }
+                    goto NEXT;
+                case ILOpCode.Conv_ovf_u8:
+                case ILOpCode.Conv_ovf_u8_un:
+                    {
+                        v1 = (stack - 1);
+                        switch (v1->type)
+                        {
+                            case StackValueType.i4: v1->u8 = checked((ulong)(v1->i4)); break;
+                            case StackValueType.i8: v1->u8 = checked((ulong)(v1->i8)); break;
+                            case StackValueType.u4: v1->u8 = checked((ulong)(v1->u4)); break;
+                            case StackValueType.u8: v1->u8 = checked((ulong)(v1->u8)); break;
+                            case StackValueType.r4: v1->u8 = checked((ulong)(v1->r4)); break;
+                            case StackValueType.r8: v1->u8 = checked((ulong)(v1->r8)); break;
+                            default: throw new Exception("Invalid operation");
+                        }
+                        v1->type = StackValueType.u8;
+                    }
+                    goto NEXT;
+                #endregion Unsigned
+                #endregion Convert-------------------------------------------------------
+
+
+
                 case ILOpCode.Callvirt:
                     {
                     }
@@ -1029,10 +1956,6 @@ namespace VCSharp
                     }
                     goto NEXT;
                 case ILOpCode.Isinst:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_r_un:
                     {
                     }
                     goto NEXT;
@@ -1069,46 +1992,6 @@ namespace VCSharp
                     }
                     goto NEXT;
                 case ILOpCode.Stobj:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_i1_un:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_i2_un:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_i4_un:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_i8_un:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u1_un:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u2_un:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u4_un:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u8_un:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_i_un:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u_un:
                     {
                     }
                     goto NEXT;
@@ -1216,38 +2099,6 @@ namespace VCSharp
                     {
                     }
                     goto NEXT;
-                case ILOpCode.Conv_ovf_i1:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u1:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_i2:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u2:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_i4:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u4:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_i8:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u8:
-                    {
-                    }
-                    goto NEXT;
                 case ILOpCode.Refanyval:
                     {
                     }
@@ -1261,26 +2112,6 @@ namespace VCSharp
                     }
                     goto NEXT;
                 case ILOpCode.Ldtoken:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_u2:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_u1:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_i:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_i:
-                    {
-                    }
-                    goto NEXT;
-                case ILOpCode.Conv_ovf_u:
                     {
                     }
                     goto NEXT;
@@ -1324,38 +2155,171 @@ namespace VCSharp
                     {
                     }
                     goto NEXT;
-                case ILOpCode.Conv_u:
-                    {
-                    }
-                    goto NEXT;
                 case ILOpCode.Arglist:
                     {
                     }
                     goto NEXT;
                 case ILOpCode.Ceq:
                     {
+                        v1 = --stack;
+                        v2 = --stack;
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 == v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 == v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 == v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_u8: if (v1->u4 == v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 == v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 == v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 == v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 == v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 == v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_u8: if (v1->u8 == v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 == v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 == v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 == v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 == v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 == v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 == v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 == v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 == v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_i4: if (v1->u8 == v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_i8: if (v1->u8 == v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 == v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 == v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 == v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 == v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 == v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 == v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 == v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 == v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 == v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 == v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 == v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 == v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 == v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 == v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 == v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 == v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.b_b: if (v1->b == v2->b) goto TRUE; goto FALSE;
+                            default: if (v1->value == v2->value) goto TRUE; goto FALSE;
+                        }
+                    TRUE:
+                        v2->type = StackValueType.i4;
+                        v2->value = 1;
+                        goto NEXT;
+                    FALSE:
+                        v2->type = StackValueType.i4;
+                        v2->value = 0;
+                        goto NEXT;
                     }
-                    goto NEXT;
                 case ILOpCode.Cgt:
-                    {
-                    }
-                    goto NEXT;
                 case ILOpCode.Cgt_un:
                     {
+                        v1 = --stack;
+                        v2 = --stack;
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 > v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 > v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 > v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 > 0 && v1->u4 > v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 > v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 > v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 > v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 > v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 > v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 > 0 && v1->u8 > v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 > v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 > v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 > v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 > v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 > v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 > v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 > v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 > v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 < 0 || v1->u8 > v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 < 0 || v1->u8 > v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 > v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 > v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 > v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 > v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 > v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 > v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 > v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 > v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 > v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 > v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 > v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 > v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 > v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 > v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 > v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 > v2->r8) goto TRUE; goto FALSE;
+                            default: throw new Exception("Invalid operation");
+                        }
+                    TRUE:
+                        v2->type = StackValueType.i4;
+                        v2->value = 1;
+                    FALSE:
+                        v2->type = StackValueType.i4;
+                        v2->value = 0;
                     }
                     goto NEXT;
                 case ILOpCode.Clt:
-                    {
-                        v2 = *(--stack);
-                        v1 = *(--stack);
-                        if (v1 < v2) *(stack++) = 1;
-                        else *(stack++) = 0;
-                    }
-                    goto NEXT;
                 case ILOpCode.Clt_un:
                     {
+                        v1 = --stack;
+                        v2 = (stack - 1);
+                        switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
+                        {
+                            case StackValueTypeCompare.i4_i4: if (v1->i4 < v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_i8: if (v1->i4 < v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_u4: if (v1->i4 < v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_u8: if (v1->i4 < 0 || v1->u4 < v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_r4: if (v1->i4 < v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i4_r8: if (v1->i4 < v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_i4: if (v1->i8 < v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_i8: if (v1->i8 < v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_u4: if (v1->i8 < v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_u8: if (v1->i8 < 0 || v1->u8 < v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_r4: if (v1->i8 < v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.i8_r8: if (v1->i8 < v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_i4: if (v1->u4 < v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_i8: if (v1->u4 < v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_u4: if (v1->u4 < v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_u8: if (v1->u4 < v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_r4: if (v1->u4 < v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u4_r8: if (v1->u4 < v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_i4: if (v2->i4 > 0 && v1->u8 < v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_i8: if (v2->i8 > 0 && v1->u8 < v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_u4: if (v1->u8 < v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_u8: if (v1->u8 < v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_r4: if (v1->u8 < v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.u8_r8: if (v1->u8 < v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_i4: if (v1->r4 < v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_i8: if (v1->r4 < v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_u4: if (v1->r4 < v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_u8: if (v1->r4 < v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_r4: if (v1->r4 < v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r4_r8: if (v1->r4 < v2->r8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_i4: if (v1->r8 < v2->i4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_i8: if (v1->r8 < v2->i8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_u4: if (v1->r8 < v2->u4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_u8: if (v1->r8 < v2->u8) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_r4: if (v1->r8 < v2->r4) goto TRUE; goto FALSE;
+                            case StackValueTypeCompare.r8_r8: if (v1->r8 < v2->r8) goto TRUE; goto FALSE;
+                            default: throw new Exception("Invalid operation");
+                        }
+                    TRUE:
+                        v2->type = StackValueType.i4;
+                        v2->value = 1;
+                    FALSE:
+                        v2->type = StackValueType.i4;
+                        v2->value = 0;
                     }
                     goto NEXT;
+
                 case ILOpCode.Ldftn:
                     {
                     }
@@ -1433,81 +2397,81 @@ namespace VCSharp
                     }
                     goto NEXT;
 
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_0: local[0] = (void*)0; goto NEXT;
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_1: local[0] = (void*)1; goto NEXT;
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_2: local[0] = (void*)2; goto NEXT;
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_3: local[0] = (void*)3; goto NEXT;
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_4: local[0] = (void*)4; goto NEXT;
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_5: local[0] = (void*)5; goto NEXT;
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_6: local[0] = (void*)6; goto NEXT;
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_7: local[0] = (void*)7; goto NEXT;
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_8: local[0] = (void*)8; goto NEXT;
-                case ILOpCode.Custom_StLoc_0_Ldc_i4_9: local[0] = (void*)9; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_0: local[1] = (void*)0; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_1: local[1] = (void*)1; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_2: local[1] = (void*)2; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_3: local[1] = (void*)3; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_4: local[1] = (void*)4; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_5: local[1] = (void*)5; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_6: local[1] = (void*)6; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_7: local[1] = (void*)7; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_8: local[1] = (void*)8; goto NEXT;
-                case ILOpCode.Custom_StLoc_1_Ldc_i4_9: local[1] = (void*)9; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_0: local[2] = (void*)0; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_1: local[2] = (void*)1; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_2: local[2] = (void*)2; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_3: local[2] = (void*)3; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_4: local[2] = (void*)4; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_5: local[2] = (void*)5; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_6: local[2] = (void*)6; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_7: local[2] = (void*)7; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_8: local[2] = (void*)8; goto NEXT;
-                case ILOpCode.Custom_StLoc_2_Ldc_i4_9: local[2] = (void*)9; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_0: local[3] = (void*)0; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_1: local[3] = (void*)1; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_2: local[3] = (void*)2; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_3: local[3] = (void*)3; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_4: local[3] = (void*)4; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_5: local[3] = (void*)5; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_6: local[3] = (void*)6; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_7: local[3] = (void*)7; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_8: local[3] = (void*)8; goto NEXT;
-                case ILOpCode.Custom_StLoc_3_Ldc_i4_9: local[3] = (void*)9; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_0: local[0] = (void*)0; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_1: local[0] = (void*)1; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_2: local[0] = (void*)2; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_3: local[0] = (void*)3; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_4: local[0] = (void*)4; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_5: local[0] = (void*)5; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_6: local[0] = (void*)6; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_7: local[0] = (void*)7; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_8: local[0] = (void*)8; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_0_Ldc_i4_9: local[0] = (void*)9; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_0: local[1] = (void*)0; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_1: local[1] = (void*)1; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_2: local[1] = (void*)2; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_3: local[1] = (void*)3; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_4: local[1] = (void*)4; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_5: local[1] = (void*)5; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_6: local[1] = (void*)6; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_7: local[1] = (void*)7; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_8: local[1] = (void*)8; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_1_Ldc_i4_9: local[1] = (void*)9; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_0: local[2] = (void*)0; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_1: local[2] = (void*)1; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_2: local[2] = (void*)2; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_3: local[2] = (void*)3; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_4: local[2] = (void*)4; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_5: local[2] = (void*)5; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_6: local[2] = (void*)6; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_7: local[2] = (void*)7; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_8: local[2] = (void*)8; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_2_Ldc_i4_9: local[2] = (void*)9; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_0: local[3] = (void*)0; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_1: local[3] = (void*)1; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_2: local[3] = (void*)2; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_3: local[3] = (void*)3; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_4: local[3] = (void*)4; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_5: local[3] = (void*)5; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_6: local[3] = (void*)6; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_7: local[3] = (void*)7; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_8: local[3] = (void*)8; goto NEXT;
+                    //case ILOpCode.Custom_StLoc_3_Ldc_i4_9: local[3] = (void*)9; goto NEXT;
 
-                case ILOpCode.Custom_Add_0: *(stack - 1) = *(stack - 1) + 0; goto NEXT;
-                case ILOpCode.Custom_Add_1: *(stack - 1) = *(stack - 1) + 1; goto NEXT;
-                case ILOpCode.Custom_Add_2: *(stack - 1) = *(stack - 1) + 2; goto NEXT;
-                case ILOpCode.Custom_Add_3: *(stack - 1) = *(stack - 1) + 3; goto NEXT;
-                case ILOpCode.Custom_Add_4: *(stack - 1) = *(stack - 1) + 4; goto NEXT;
-                case ILOpCode.Custom_Add_5: *(stack - 1) = *(stack - 1) + 5; goto NEXT;
-                case ILOpCode.Custom_Add_6: *(stack - 1) = *(stack - 1) + 6; goto NEXT;
-                case ILOpCode.Custom_Add_7: *(stack - 1) = *(stack - 1) + 7; goto NEXT;
-                case ILOpCode.Custom_Add_8: *(stack - 1) = *(stack - 1) + 8; goto NEXT;
-                case ILOpCode.Custom_Add_9: *(stack - 1) = *(stack - 1) + 9; goto NEXT;
+                    //case ILOpCode.Custom_Add_0: *(stack - 1) = *(stack - 1) + 0; goto NEXT;
+                    //case ILOpCode.Custom_Add_1: *(stack - 1) = *(stack - 1) + 1; goto NEXT;
+                    //case ILOpCode.Custom_Add_2: *(stack - 1) = *(stack - 1) + 2; goto NEXT;
+                    //case ILOpCode.Custom_Add_3: *(stack - 1) = *(stack - 1) + 3; goto NEXT;
+                    //case ILOpCode.Custom_Add_4: *(stack - 1) = *(stack - 1) + 4; goto NEXT;
+                    //case ILOpCode.Custom_Add_5: *(stack - 1) = *(stack - 1) + 5; goto NEXT;
+                    //case ILOpCode.Custom_Add_6: *(stack - 1) = *(stack - 1) + 6; goto NEXT;
+                    //case ILOpCode.Custom_Add_7: *(stack - 1) = *(stack - 1) + 7; goto NEXT;
+                    //case ILOpCode.Custom_Add_8: *(stack - 1) = *(stack - 1) + 8; goto NEXT;
+                    //case ILOpCode.Custom_Add_9: *(stack - 1) = *(stack - 1) + 9; goto NEXT;
 
-                case ILOpCode.Custom_Ldloc_s_Ldc_s_Add_StLoc_s:
-                    local[op[4]] = (void*)((long)local[*opv] + op[3]);
-                    goto NEXT;
+                    //case ILOpCode.Custom_Ldloc_s_Ldc_s_Add_StLoc_s:
+                    //    local[op[4]] = (void*)((long)local[*opv] + op[3]);
+                    //    goto NEXT;
 
-                case ILOpCode.Custom_Ldloc_s_Ldc_s_Blt_s:
-                    if ((long)local[*opv] < op[3])
-                    {
-                        ops = (seek + op[4]);
-                    }
-                    goto NEXT;
+                    //case ILOpCode.Custom_Ldloc_s_Ldc_s_Blt_s:
+                    //    if ((long)local[*opv] < op[3])
+                    //    {
+                    //        ops = (seek + op[4]);
+                    //    }
+                    //    goto NEXT;
 
-                case ILOpCode.Custom_Ldloc_s_Ldc_Blt_s:
-                    if ((long)local[*opv] < *(int*)(op + 3))
-                    {
-                        ops = (seek + op[7]);
-                    }
-                    goto NEXT;
+                    //case ILOpCode.Custom_Ldloc_s_Ldc_Blt_s:
+                    //    if ((long)local[*opv] < *(int*)(op + 3))
+                    //    {
+                    //        ops = (seek + op[7]);
+                    //    }
+                    //    goto NEXT;
 
-                case ILOpCode.Custom_StLoc_s_Ldc_i4_s:
-                    {
-                        local[*opv] = (void*)*(op + 3);
-                    }
-                    goto NEXT;
+                    //case ILOpCode.Custom_StLoc_s_Ldc_i4_s:
+                    //    {
+                    //        local[*opv] = (void*)*(op + 3);
+                    //    }
+                    //    goto NEXT;
             }
         }
     }
