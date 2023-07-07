@@ -38,6 +38,11 @@ namespace VCSharp
 
         internal int StructSize;
         internal int ObjectSize;
+        private Type type;
 
+        public VType(Type type)
+        {
+            this.type = type;
+        }
     }
 }
