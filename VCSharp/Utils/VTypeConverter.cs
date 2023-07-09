@@ -36,5 +36,29 @@ namespace VCSharp
             else return StackValueType.obj;
         }
 
+        public static int GetSize(StackValueType type)
+        {
+            if(type < StackValueType.s9)
+            {
+                switch (type)
+                {
+                    case StackValueType.i4:
+                    case StackValueType.u4:
+                    case StackValueType.r4:
+                    case StackValueType.b:
+                        return 4;
+                    default:
+                        return 8;
+                }
+            } 
+            else if(type <= StackValueType.s243)
+            {
+                return (int)type;
+            }
+            else
+            {
+                return 256 << (type - StackValueType.s256);
+            }
+        }
     }
 }

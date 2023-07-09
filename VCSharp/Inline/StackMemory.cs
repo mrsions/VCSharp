@@ -19,7 +19,22 @@ namespace VCSharp
         r8,
         b,
         obj,
-        st
+        st,
+
+        s9 = 9,
+        s243= 243,
+        s256,
+        s512,
+        s1024,
+        s2048,
+        s4096,
+        s8192,
+        s16384,
+        s32768,
+        s65536,
+        s131072,
+        s262144,
+        s524288,
     }
 
     public enum StackValueTypeCompare : byte
@@ -157,16 +172,17 @@ namespace VCSharp
 
         public byte* Alloc(int size)
         {
-            // 메모리 할당
-            byte* result = BStack;
-
             // 메모리 증가
             if (BStack + size >= Memory.BStackEnd)
             {
                 throw new StackOverflowException();
             }
-            BStack += size;
 
+            // 메모리 할당
+            byte* result = BStack;
+            Unsafe.InitBlock(result, 0, (uint)size);
+
+            BStack += size;
             return result;
         }
 

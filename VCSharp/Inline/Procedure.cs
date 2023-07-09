@@ -16,14 +16,13 @@ namespace VCSharp
         {
             public VType Type;
             public int Size;
+            public int SizeWithHeader;
             public StackValueType ValueType;
             public string Name;
             public bool IsAdd => Size > 8;
         }
         public List<Variable> Variables = new List<Variable>();
         public int VariableTotalSize;
-        public int VariableObjectCount;
-
         public int MaxStack;
 
         public List<Operator> OperatorList = new List<Operator>();
@@ -36,68 +35,55 @@ namespace VCSharp
         public void AddVar(Variable var)
         {
             Variables.Add(var);
-            switch (var.Type.VirtualType)
-            {
-                case EVTypeType.Object:
-                    {
-                        var.Size = 8;
-                        VariableTotalSize += var.Size;
-                        VariableObjectCount++;
-                    }
-                    break;
-                default:
-                    {
-                        var.Size = var.Type.Size;
-                        if (var.IsAdd)
-                        {
-                            VariableTotalSize += var.Size;
-                        }
-                    }
-                    break;
-            }
+            var.Size = VTypeConverter.GetSize(var.ValueType);
+            var.SizeWithHeader = var.Size + 1;
+            VariableTotalSize += var.SizeWithHeader;
         }
 
         internal unsafe void Call(LocalStack stacks, VObject? caller)
         {
             // 초기화
             stacks.Memory ??= StackMemory.Current;
+            StackValue* v1;
+            StackValue* v2;
             byte* bstack = (byte*)&stacks.BStack;
             ref ObjPtr ostack = ref stacks.OStack;
+            StackValue** stack;
+            StackValue** local = null;
 
             //---------------------------------------------------------------------------------
             // 지역변수 삽입 (지역변수가 스텍보다 먼저 쌓여야한다)
             int localVariableLength = Variables.Count;
-            StackValue* local = stacks.Alloc<StackValue>(localVariableLength);
-            byte* localMemory = stacks.Alloc(VariableTotalSize);
-
             if (localVariableLength > 0)
             {
-                byte* lastLocalMemory = localMemory;
+                // 지역 변수 목록 생성
+                local = (StackValue**)stacks.Alloc(sizeof(IntPtr) * localVariableLength);
+
+                // 지역 변수 메모리 생성
+                byte* localMemory = stacks.Alloc(VariableTotalSize);
+
+                // 주소 할당
                 for (int i = 0; i < localVariableLength; i++)
                 {
-                    var v = Variables[i];
-                    local[i].type = v.ValueType;
+                    var varInfo = Variables[i];
 
-                    // 8바이트 이상의 메모리일 경우 
-                    if (Variables[i].IsAdd)
-                    {
-                        local[i].ptr = lastLocalMemory;
-                        lastLocalMemory += v.Size;
-                    }
+                    // 할당
+                    *(local + i) = v1 = (StackValue*)localMemory;
 
-                    // 객체참조일 경우
-                    else if (v.ValueType == StackValueType.obj)
+                    // 값 할당
+                    v1->type = varInfo.ValueType;
+
+                    // 객체 저장 컨테이너 생성
+                    if (varInfo.ValueType == StackValueType.obj)
                     {
-                        local[i].i8 = stacks.AllocObj();
+                        v1->i4 = stacks.AllocObj();
                     }
                 }
             }
 
             //---------------------------------------------------------------------------------
             // 스텍변수 초기화
-            StackValue* stack = stacks.Alloc<StackValue>(MaxStack);
-            StackValue* v1;
-            StackValue* v2;
+            stack = (StackValue**)stacks.Alloc(sizeof(IntPtr) * MaxStack);
 
             // 프로시져
             byte** seek = null;
@@ -141,7 +127,6 @@ namespace VCSharp
                     case ILOpCode.Ldloc:
                     case ILOpCode.Ldloca:
                         {
-
                             *(stack++) = *(local + *(ushort*)opv);
                         }
                         goto NEXT;
