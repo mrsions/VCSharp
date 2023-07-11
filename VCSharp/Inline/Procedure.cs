@@ -57,7 +57,7 @@ namespace VCSharp
             if (localVariableLength > 0)
             {
                 // 지역 변수 목록 생성
-                local = (StackValue**)stacks.Alloc(sizeof(IntPtr) * localVariableLength);
+                stacks.local = local = (StackValue**)stacks.Alloc(sizeof(IntPtr) * localVariableLength);
 
                 // 지역 변수 메모리 생성
                 byte* localMemory = stacks.Alloc(VariableTotalSize);
@@ -69,6 +69,7 @@ namespace VCSharp
 
                     // 할당
                     *(local + i) = v1 = (StackValue*)localMemory;
+                    localMemory += varInfo.Size;
 
                     // 값 할당
                     v1->type = varInfo.ValueType;
@@ -83,7 +84,7 @@ namespace VCSharp
 
             //---------------------------------------------------------------------------------
             // 스텍변수 초기화
-            stack = (StackValue**)stacks.Alloc(sizeof(IntPtr) * MaxStack);
+            stacks.stack = stack = (StackValue**)stacks.Alloc(sizeof(IntPtr) * MaxStack);
 
             // 프로시져
             byte** seek = null;
@@ -125,36 +126,44 @@ namespace VCSharp
                     #region Local Variable
                     #region Load
                     case ILOpCode.Ldloc:
+                        {
+                            stacks.PushStack(stacks.GetLocalVariable(*(ushort*)opv));
+                        }
+                        goto NEXT;
                     case ILOpCode.Ldloca:
                         {
-                            *(stack++) = *(local + *(ushort*)opv);
+                            stacks.PushStackAddress(stacks.GetLocalVariable(*(ushort*)opv));
                         }
                         goto NEXT;
                     case ILOpCode.Ldloc_s:
+                        {
+                            stacks.PushStack(stacks.GetLocalVariable(*opv));
+                        }
+                        goto NEXT;
                     case ILOpCode.Ldloca_s:
                         {
-                            *(stack++) = *(local + *opv);
+                            stacks.PushStackAddress(stacks.GetLocalVariable(*opv));
                         }
                         goto NEXT;
 
                     case ILOpCode.Ldloc_0:
                         {
-                            *(stack++) = local[0];
+                            stacks.PushStack(stacks.GetLocalVariable(0));
                         }
                         goto NEXT;
                     case ILOpCode.Ldloc_1:
                         {
-                            *(stack++) = local[1];
+                            stacks.PushStack(stacks.GetLocalVariable(1));
                         }
                         goto NEXT;
                     case ILOpCode.Ldloc_2:
                         {
-                            *(stack++) = local[2];
+                            stacks.PushStack(stacks.GetLocalVariable(2));
                         }
                         goto NEXT;
                     case ILOpCode.Ldloc_3:
                         {
-                            *(stack++) = local[3];
+                            stacks.PushStack(stacks.GetLocalVariable(3));
                         }
                         goto NEXT;
                     #endregion Load
@@ -162,140 +171,163 @@ namespace VCSharp
                     #region Store
                     case ILOpCode.Stloc:
                         {
-                            local[*(ushort*)opv] = *(--stack);
+                            stacks.SetLocalVariable(*(ushort*)opv, stacks.PopStack());
                         }
                         goto NEXT;
                     case ILOpCode.Stloc_s:
                         {
-                            local[*opv] = *(--stack);
+                            stacks.SetLocalVariable(*opv, stacks.PopStack());
                         }
                         goto NEXT;
                     case ILOpCode.Stloc_0:
                         {
-                            local[0] = *(--stack);
+                            stacks.SetLocalVariable(0, stacks.PopStack());
                         }
                         goto NEXT;
                     case ILOpCode.Stloc_1:
                         {
-                            local[1] = *(--stack);
+                            stacks.SetLocalVariable(1, stacks.PopStack());
                         }
                         goto NEXT;
                     case ILOpCode.Stloc_2:
                         {
-                            local[2] = *(--stack);
+                            stacks.SetLocalVariable(2, stacks.PopStack());
                         }
                         goto NEXT;
                     case ILOpCode.Stloc_3:
                         {
-                            local[3] = *(--stack);
+                            stacks.SetLocalVariable(3, stacks.PopStack());
                         }
                         goto NEXT;
                     #endregion Store
                     #endregion Local_Variable
 
+                    case ILOpCode.Ldarg:
+                        {
+                            stacks.PushStack(stacks.GetArgument(*(short*)opv));
+                        }
+                        goto NEXT;
                     case ILOpCode.Ldarg_s:
                         {
+                            stacks.PushStack(stacks.GetArgument(*opv));
+                        }
+                        goto NEXT;
+                    case ILOpCode.Ldarga:
+                        {
+                            stacks.PushStackAddress(stacks.GetArgument(*(short*)opv));
                         }
                         goto NEXT;
                     case ILOpCode.Ldarga_s:
                         {
+                            stacks.PushStackAddress(stacks.GetArgument(*opv));
+                        }
+                        goto NEXT;
+                    case ILOpCode.Starg:
+                        {
+                            stacks.SetArgument(*opv, stacks.PopStack());
                         }
                         goto NEXT;
                     case ILOpCode.Starg_s:
                         {
-                        }
-                        goto NEXT;
-                    case ILOpCode.Ldnull:
-                        {
+                            stacks.SetArgument(*opv, stacks.PopStack());
                         }
                         goto NEXT;
 
                     #region Create Value
+                    case ILOpCode.Ldnull:
+                        {
+                            var value = new StackValue8 { type = StackValueType.i8, i8 = 0 };
+                            stacks.PushStack((StackValue*)&value);
+                        }
+                        goto NEXT;
                     case ILOpCode.Ldc_i4_m1:
                         {
-                            *(stack++) = StackValue.I4_m1;
+                            stacks.PushStack(-1);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_0:
                         {
-                            *(stack++) = StackValue.I4_0;
+                            stacks.PushStack(0);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_1:
                         {
-                            *(stack++) = StackValue.I4_1;
+                            stacks.PushStack(1);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_2:
                         {
-                            *(stack++) = StackValue.I4_2;
+                            stacks.PushStack(2);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_3:
                         {
-                            *(stack++) = StackValue.I4_3;
+                            stacks.PushStack(3);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_4:
                         {
-                            *(stack++) = StackValue.I4_4;
+                            stacks.PushStack(4);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_5:
                         {
-                            *(stack++) = StackValue.I4_5;
+                            stacks.PushStack(5);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_6:
                         {
-                            *(stack++) = StackValue.I4_6;
+                            stacks.PushStack(6);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_7:
                         {
-                            *(stack++) = StackValue.I4_7;
+                            stacks.PushStack(7);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_8:
                         {
-                            *(stack++) = StackValue.I4_8;
+                            stacks.PushStack(8);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4_s:
                         {
-                            *(stack++) = new StackValue { type = StackValueType.i4, value = *opv };
+                            stacks.PushStack(*opv);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i4:
                         {
-                            *(stack++) = new StackValue { type = StackValueType.i4, value = *(int*)opv };
+                            stacks.PushStack(*(int*)opv);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_i8:
                         {
-                            *(stack++) = new StackValue { type = StackValueType.i8, value = *(long*)opv };
+                            var value = new StackValue8 { type = StackValueType.i8, i8 = *(long*)opv };
+                            stacks.PushStack((StackValue*)&value);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_r4:
                         {
-                            *(stack++) = new StackValue { type = StackValueType.r4, r4 = *(float*)opv };
+                            var value = new StackValue4 { type = StackValueType.r4, r4 = *(float*)opv };
+                            stacks.PushStack((StackValue*)&value);
                         }
                         goto NEXT;
                     case ILOpCode.Ldc_r8:
                         {
-                            *(stack++) = new StackValue { type = StackValueType.r8, r8 = *(double*)opv };
+                            var value = new StackValue8 { type = StackValueType.r8, r8 = *(long*)opv };
+                            stacks.PushStack((StackValue*)&value);
                         }
                         goto NEXT;
                     #endregion
 
                     case ILOpCode.Dup:
                         {
-                            *(stack++) = *(stack - 1);
+                            stacks.PushStack(*(stack - 1));
                         }
                         goto NEXT;
                     case ILOpCode.Pop:
                         {
-                            --stack;
+                            stacks.PopStackVoid();
                         }
                         goto NEXT;
 
@@ -316,15 +348,15 @@ namespace VCSharp
                                 for (int i = param.Length - 1; i >= 0; i--)
                                 {
                                     var p = parameters[i];
-                                    v1 = (--stack);
+                                    v1 = stacks.PopStack();
                                     param[i] = stacks.GetAny(v1, p.ParameterType);
                                 }
                             }
 
-                            v1 = (stack++);
+                            v1 = *(stack++);
 
                             object? result = m.Invoke(null, param);
-                            stacks.SetAny(v1, m.ReturnType, result);
+                            stacks.PushStack(m.ReturnType, result);
                         }
                         goto NEXT;
 
@@ -354,7 +386,7 @@ namespace VCSharp
                     #region Br?(true)
                     case ILOpCode.Brfalse:
                         {
-                            if (!(--stack)->b)
+                            if (!(*(--stack))->b)
                             {
                                 ops = (seek + *(int*)opv);
                             }
@@ -362,7 +394,7 @@ namespace VCSharp
                         goto NEXT;
                     case ILOpCode.Brfalse_s:
                         {
-                            if (!(--stack)->b)
+                            if (!(*(--stack))->b)
                             {
                                 ops = (seek + *opv);
                             }
@@ -370,7 +402,7 @@ namespace VCSharp
                         goto NEXT;
                     case ILOpCode.Brtrue:
                         {
-                            if (!(--stack)->b)
+                            if (!(*(--stack))->b)
                             {
                                 ops = (seek + *(int*)opv);
                             }
@@ -378,7 +410,7 @@ namespace VCSharp
                         goto NEXT;
                     case ILOpCode.Brtrue_s:
                         {
-                            if ((--stack)->b)
+                            if ((*(--stack))->b)
                             {
                                 ops = (seek + *opv);
                             }
@@ -386,8 +418,8 @@ namespace VCSharp
                         goto NEXT;
                     case ILOpCode.Beq:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 == v2->i4) break; goto NEXT;
@@ -434,8 +466,8 @@ namespace VCSharp
                         goto NEXT;
                     case ILOpCode.Beq_s:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 == v2->i4) break; goto NEXT;
@@ -482,8 +514,8 @@ namespace VCSharp
                         goto NEXT;
                     case ILOpCode.Bne_un:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 != v2->i4) break; goto NEXT;
@@ -530,8 +562,8 @@ namespace VCSharp
                         goto NEXT;
                     case ILOpCode.Bne_un_s:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 != v2->i4) break; goto NEXT;
@@ -581,8 +613,8 @@ namespace VCSharp
                     case ILOpCode.Bge:
                     case ILOpCode.Bge_un:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 >= v2->i4) break; goto NEXT;
@@ -629,8 +661,8 @@ namespace VCSharp
                     case ILOpCode.Bge_s:
                     case ILOpCode.Bge_un_s:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 >= v2->i4) break; goto NEXT;
@@ -679,8 +711,8 @@ namespace VCSharp
                     case ILOpCode.Bgt:
                     case ILOpCode.Bgt_un:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 > v2->i4) break; goto NEXT;
@@ -727,8 +759,8 @@ namespace VCSharp
                     case ILOpCode.Bgt_s:
                     case ILOpCode.Bgt_un_s:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 > v2->i4) break; goto NEXT;
@@ -777,8 +809,8 @@ namespace VCSharp
                     case ILOpCode.Ble:
                     case ILOpCode.Ble_un:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 <= v2->i4) break; goto NEXT;
@@ -825,8 +857,8 @@ namespace VCSharp
                     case ILOpCode.Ble_s:
                     case ILOpCode.Ble_un_s:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 <= v2->i4) break; goto NEXT;
@@ -875,8 +907,8 @@ namespace VCSharp
                     case ILOpCode.Blt:
                     case ILOpCode.Blt_un:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 < v2->i4) break; goto NEXT;
@@ -923,8 +955,8 @@ namespace VCSharp
                     case ILOpCode.Blt_s:
                     case ILOpCode.Blt_un_s:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = *(--stack);
+                            v2 = *(--stack);
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 < v2->i4) break; goto NEXT;
@@ -972,16 +1004,18 @@ namespace VCSharp
 
                     case ILOpCode.Switch:
                         {
+                            int index = *(int*)opv;
+                            ops = (seek + *((int*)opv + (index + 1)));
                         }
                         goto NEXT;
 
                     #endregion condition jump
 
-                    case ILOpCode.Ldind_i1:
+                    case ILOpCode.Ldind_i:
                         {
                         }
                         goto NEXT;
-                    case ILOpCode.Ldind_u1:
+                    case ILOpCode.Ldind_i1:
                         {
                         }
                         goto NEXT;
@@ -989,15 +1023,7 @@ namespace VCSharp
                         {
                         }
                         goto NEXT;
-                    case ILOpCode.Ldind_u2:
-                        {
-                        }
-                        goto NEXT;
                     case ILOpCode.Ldind_i4:
-                        {
-                        }
-                        goto NEXT;
-                    case ILOpCode.Ldind_u4:
                         {
                         }
                         goto NEXT;
@@ -1005,7 +1031,15 @@ namespace VCSharp
                         {
                         }
                         goto NEXT;
-                    case ILOpCode.Ldind_i:
+                    case ILOpCode.Ldind_u1:
+                        {
+                        }
+                        goto NEXT;
+                    case ILOpCode.Ldind_u2:
+                        {
+                        }
+                        goto NEXT;
+                    case ILOpCode.Ldind_u4:
                         {
                         }
                         goto NEXT;
@@ -1053,8 +1087,8 @@ namespace VCSharp
                     #region 사칙연산-------------------------------------------------------
                     case ILOpCode.Add:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 + v2->i4; break;
@@ -1095,12 +1129,13 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 + v2->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Sub:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 - v2->i4; break;
@@ -1141,12 +1176,13 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 - v2->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Mul:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 * v2->i4; break;
@@ -1187,13 +1223,14 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 * v2->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Div:
                     case ILOpCode.Div_un:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 / v2->i4; break;
@@ -1234,13 +1271,14 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 / v2->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Rem:
                     case ILOpCode.Rem_un:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 % v2->i4; break;
@@ -1281,14 +1319,15 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: v1->r8 = v1->r8 % v2->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     #endregion 사칙연산-------------------------------------------------------
                     #region 비트연산-------------------------------------------------------
                     case ILOpCode.And:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 & v2->i4; break;
@@ -1330,12 +1369,13 @@ namespace VCSharp
                                 case StackValueTypeCompare.b_b: v1->b = v1->b & v2->b; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Or:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 | v2->i4; break;
@@ -1377,12 +1417,13 @@ namespace VCSharp
                                 case StackValueTypeCompare.b_b: v1->b = v1->b | v2->b; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Xor:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 ^ v2->i4; break;
@@ -1424,11 +1465,12 @@ namespace VCSharp
                                 case StackValueTypeCompare.b_b: v1->b = v1->b ^ v2->b; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Neg:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i4 = -(v1->i4); break;
@@ -1439,11 +1481,12 @@ namespace VCSharp
                                 case StackValueType.r8: v1->r8 = -(v1->r8); break;
                                 case StackValueType.b: v1->b = !(v1->b); break;
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Not:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i4 = ~(v1->i4); break;
@@ -1454,14 +1497,15 @@ namespace VCSharp
                                 case StackValueType.r8: throw new Exception("Invalid operation"); // v1->r8 = ~(v1->r8); break;
                                 case StackValueType.b: v1->b = !(v1->b); break;
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     #endregion 비트연산-------------------------------------------------------
                     #region 비트쉬프트-------------------------------------------------------
                     case ILOpCode.Shl:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 << v2->i4; break;
@@ -1502,13 +1546,14 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 << v2->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Shr:
                     case ILOpCode.Shr_un:
                         {
-                            v2 = (--stack);
-                            v1 = (stack - 1);
+                            v2 = stacks.PopStack();
+                            v1 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 >> v2->i4; break;
@@ -1549,6 +1594,7 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: throw new Exception("Invalid operation"); //  v1->r8 = v1->r8 >> v2->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     #endregion-------------------------------------------------------
@@ -1556,7 +1602,7 @@ namespace VCSharp
                     #region Integer
                     case ILOpCode.Conv_i:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i8 = (nint)(v1->i4); break;
@@ -1568,11 +1614,12 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i8;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_i1:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i8 = (sbyte)(v1->i4); break;
@@ -1584,11 +1631,12 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_i2:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i8 = (short)(v1->i4); break;
@@ -1600,11 +1648,12 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_i4:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: break;
@@ -1616,11 +1665,12 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_i8:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i8 = (long)(v1->i4); break;
@@ -1632,12 +1682,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i8;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_i:
                     case ILOpCode.Conv_ovf_i_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i8 = checked((nint)(v1->i4)); break;
@@ -1649,12 +1700,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i8;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_i1:
                     case ILOpCode.Conv_ovf_i1_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i8 = checked((sbyte)(v1->i4)); break;
@@ -1666,12 +1718,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_i2:
                     case ILOpCode.Conv_ovf_i2_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i8 = checked((short)(v1->i4)); break;
@@ -1683,12 +1736,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_i4:
                     case ILOpCode.Conv_ovf_i4_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: break;
@@ -1700,12 +1754,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_i8:
                     case ILOpCode.Conv_ovf_i8_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->i8 = checked((long)(v1->i4)); break;
@@ -1717,6 +1772,7 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i8;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     #endregion Integer
@@ -1724,7 +1780,7 @@ namespace VCSharp
                     case ILOpCode.Conv_r_un:
                     case ILOpCode.Conv_r4:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->r4 = (float)(v1->i4); break;
@@ -1737,11 +1793,12 @@ namespace VCSharp
                             }
                             v1->type = StackValueType.r4;
                             v1->Last4 = 0;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_r8:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->r8 = (double)(v1->i4); break;
@@ -1753,13 +1810,14 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.r8;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     #endregion Real
                     #region Unsigned
                     case ILOpCode.Conv_u:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = (nuint)(v1->i4); break;
@@ -1771,11 +1829,12 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u8;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_u1:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = (byte)(v1->i4); break;
@@ -1787,11 +1846,12 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_u2:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = (ushort)(v1->i4); break;
@@ -1803,11 +1863,12 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_u4:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = (uint)(v1->i4); break;
@@ -1819,11 +1880,12 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_u8:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = (ulong)(v1->i4); break;
@@ -1835,12 +1897,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u8;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_u:
                     case ILOpCode.Conv_ovf_u_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = checked((nuint)(v1->i4)); break;
@@ -1852,12 +1915,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u8;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_u1:
                     case ILOpCode.Conv_ovf_u1_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = checked((byte)(v1->i4)); break;
@@ -1869,12 +1933,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_u2:
                     case ILOpCode.Conv_ovf_u2_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = checked((ushort)(v1->i4)); break;
@@ -1886,12 +1951,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_u4:
                     case ILOpCode.Conv_ovf_u4_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = checked((uint)(v1->i4)); break;
@@ -1903,12 +1969,13 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     case ILOpCode.Conv_ovf_u8:
                     case ILOpCode.Conv_ovf_u8_un:
                         {
-                            v1 = (stack - 1);
+                            v1 = stacks.PopStack();
                             switch (v1->type)
                             {
                                 case StackValueType.i4: v1->u8 = checked((ulong)(v1->i4)); break;
@@ -1920,6 +1987,7 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u8;
+                            stacks.PushStack(v1);
                         }
                         goto NEXT;
                     #endregion Unsigned
@@ -2157,8 +2225,8 @@ namespace VCSharp
                         goto NEXT;
                     case ILOpCode.Ceq:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = stacks.PopStack();
+                            v2 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 == v2->i4) goto TRUE; goto FALSE;
@@ -2201,19 +2269,17 @@ namespace VCSharp
                                 default: if (v1->value == v2->value) goto TRUE; goto FALSE;
                             }
                         TRUE:
-                            v2->type = StackValueType.i4;
-                            v2->value = 1;
+                            stacks.PushStack(1);
                             goto NEXT;
                         FALSE:
-                            v2->type = StackValueType.i4;
-                            v2->value = 0;
+                            stacks.PushStack(0);
                             goto NEXT;
                         }
                     case ILOpCode.Cgt:
                     case ILOpCode.Cgt_un:
                         {
-                            v1 = --stack;
-                            v2 = --stack;
+                            v1 = stacks.PopStack();
+                            v2 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 > v2->i4) goto TRUE; goto FALSE;
@@ -2255,18 +2321,16 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                         TRUE:
-                            v2->type = StackValueType.i4;
-                            v2->value = 1;
+                            stacks.PushStack(1);
                         FALSE:
-                            v2->type = StackValueType.i4;
-                            v2->value = 0;
+                            stacks.PushStack(0);
                         }
                         goto NEXT;
                     case ILOpCode.Clt:
                     case ILOpCode.Clt_un:
                         {
-                            v1 = --stack;
-                            v2 = (stack - 1);
+                            v1 = stacks.PopStack();
+                            v2 = stacks.PopStack();
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 < v2->i4) goto TRUE; goto FALSE;
@@ -2308,11 +2372,11 @@ namespace VCSharp
                                 default: throw new Exception("Invalid operation");
                             }
                         TRUE:
-                            v2->type = StackValueType.i4;
-                            v2->value = 1;
+                            stacks.PushStack(1);
+                            goto NEXT;
                         FALSE:
-                            v2->type = StackValueType.i4;
-                            v2->value = 0;
+                            stacks.PushStack(0);
+                            goto NEXT;
                         }
                         goto NEXT;
 
@@ -2321,18 +2385,6 @@ namespace VCSharp
                         }
                         goto NEXT;
                     case ILOpCode.Ldvirtftn:
-                        {
-                        }
-                        goto NEXT;
-                    case ILOpCode.Ldarg:
-                        {
-                        }
-                        goto NEXT;
-                    case ILOpCode.Ldarga:
-                        {
-                        }
-                        goto NEXT;
-                    case ILOpCode.Starg:
                         {
                         }
                         goto NEXT;
