@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace VCSharp
+namespace VCSharp.Utils
 {
     [StructLayout(LayoutKind.Explicit, Pack = 1, Size = 12)]
     public unsafe struct ObjPtr

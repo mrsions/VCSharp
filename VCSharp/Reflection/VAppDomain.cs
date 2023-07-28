@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace VCSharp
+namespace VCSharp.Reflection
 {
     public class VAppDomain : VMemberInfo
     {

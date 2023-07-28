@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace VCSharp
+namespace VCSharp.Reflection
 {
     public enum VMemberAccessType
     {

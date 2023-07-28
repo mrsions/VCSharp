@@ -2,47 +2,39 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Text;
+using VCSharp.Compiler.Lexer;
+using VCSharp.Compiler.Parser;
+using VCSharp.Compiler.Tokens;
 
 namespace VCSharp.Example
 {
     public unsafe class Program
     {
-        public struct Vector3
-        {
-            public int x, y, z;
-
-            public override string ToString()
-            {
-                return $"({x},{y},{z})";
-            }
-        }
-
         static void Main(string[] args)
         {
-            var func = (delegate*<object, string>)typeof(Vector3).GetMethod(nameof(Vector3.ToString)).MethodHandle.GetFunctionPointer();
+            string s = File.ReadAllText("C:\\Users\\mrsio\\source\\repos\\VCSharp\\VCSharp\\Compiler\\Lexer\\PunctuatorToken.cs");
+            StringReader sReader = new StringReader(s);
+            var lexer = new Lexer(sReader);
+            var parser = new SyntaxParser();
 
-            var v = new Vector3() { x = 1, y = 2, z = 3 };
-            object o = v;
-
-            Console.WriteLine(func(v));
-            Console.WriteLine(func(o));
-        }
-
-        static unsafe string BytesToHexString(byte* pointer, int length)
-        {
-            char[] hexChars = new char[length * 3];
-            const string hexAlphabet = "0123456789ABCDEF";
-
-            for (int i = 0; i < length; i++)
+            int i = 0;
+            Token? token;
+            while ((token = lexer.NextToken()) != Token.EndOfToken)
             {
-                byte value = *(pointer + i);
-                hexChars[i * 3] = hexAlphabet[value >> 4];
-                hexChars[i * 3 + 1] = hexAlphabet[value & 0x0F];
-                hexChars[i * 3 + 2] = ' ';
+                if (token is WhiteSpaceToken) continue;
+
+                if (token is ErrorToken)
+                {
+                    Console.WriteLine($"{++i} | {token}");
+                    Console.WriteLine($"Continue to press return(enter)...");
+                    Console.ReadLine();
+                }
+                Console.WriteLine($"{++i} | {token.ToViewString()}");
+                parser.AddToken(token);
             }
 
-            Console.WriteLine(hexChars);
-            return new string(hexChars);
+
         }
     }
 }

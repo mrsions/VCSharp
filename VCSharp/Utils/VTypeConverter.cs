@@ -7,8 +7,9 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using VCSharp.Inline;
 
-namespace VCSharp
+namespace VCSharp.Utils
 {
     public class VTypeConverter
     {
@@ -39,7 +40,7 @@ namespace VCSharp
 
         public static int GetSize(StackValueType type)
         {
-            if(type < StackValueType.s9)
+            if (type < StackValueType.s9)
             {
                 switch (type)
                 {
@@ -51,14 +52,14 @@ namespace VCSharp
                     default:
                         return 8;
                 }
-            } 
-            else if(type <= StackValueType.s243)
+            }
+            else if (type <= StackValueType.s243)
             {
                 return (int)type;
             }
             else
             {
-                return 256 << (type - StackValueType.s256);
+                return 256 << type - StackValueType.s256;
             }
         }
 
@@ -69,7 +70,7 @@ namespace VCSharp
 
         internal static StackValueType RealType(StackValueType t)
         {
-            if(t <= StackValueType.st)
+            if (t <= StackValueType.st)
             {
                 return t;
             }

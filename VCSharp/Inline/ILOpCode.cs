@@ -1,4 +1,4 @@
-﻿namespace VCSharp
+﻿namespace VCSharp.Inline
 {
     public enum ILOpCode : ushort
     {

@@ -5,8 +5,10 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using VCSharp.Reflection;
+using VCSharp.Utils;
 
-namespace VCSharp
+namespace VCSharp.Inline
 {
     public unsafe class Procedure
     {
@@ -92,8 +94,8 @@ namespace VCSharp
 
         NEXT:
             {
-                byte* op = *(ops++);
-                byte* opv = (byte*)op + 2;
+                byte* op = *ops++;
+                byte* opv = op + 2;
                 switch (*(ILOpCode*)op)
                 {
                     case ILOpCode.Nop:
@@ -353,7 +355,7 @@ namespace VCSharp
                                 }
                             }
 
-                            v1 = *(stack++);
+                            v1 = *stack++;
 
                             object? result = m.Invoke(null, param);
                             stacks.PushStack(m.ReturnType, result);
@@ -374,52 +376,52 @@ namespace VCSharp
 
                     case ILOpCode.Br:
                         {
-                            ops = ((seek + *(int*)opv));
+                            ops = seek + *(int*)opv;
                         }
                         goto NEXT;
                     case ILOpCode.Br_s:
                         {
-                            ops = ((seek + *opv));
+                            ops = seek + *opv;
                         }
                         goto NEXT;
 
                     #region Br?(true)
                     case ILOpCode.Brfalse:
                         {
-                            if (!(*(--stack))->b)
+                            if (!(*--stack)->b)
                             {
-                                ops = (seek + *(int*)opv);
+                                ops = seek + *(int*)opv;
                             }
                         }
                         goto NEXT;
                     case ILOpCode.Brfalse_s:
                         {
-                            if (!(*(--stack))->b)
+                            if (!(*--stack)->b)
                             {
-                                ops = (seek + *opv);
+                                ops = seek + *opv;
                             }
                         }
                         goto NEXT;
                     case ILOpCode.Brtrue:
                         {
-                            if (!(*(--stack))->b)
+                            if (!(*--stack)->b)
                             {
-                                ops = (seek + *(int*)opv);
+                                ops = seek + *(int*)opv;
                             }
                         }
                         goto NEXT;
                     case ILOpCode.Brtrue_s:
                         {
-                            if ((*(--stack))->b)
+                            if ((*--stack)->b)
                             {
-                                ops = (seek + *opv);
+                                ops = seek + *opv;
                             }
                         }
                         goto NEXT;
                     case ILOpCode.Beq:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 == v2->i4) break; goto NEXT;
@@ -461,13 +463,13 @@ namespace VCSharp
                                 case StackValueTypeCompare.b_b: if (v1->b == v2->b) break; goto NEXT;
                                 default: if (v1->value == v2->value) break; goto NEXT;
                             }
-                            ops = (seek + *(int*)opv);
+                            ops = seek + *(int*)opv;
                         }
                         goto NEXT;
                     case ILOpCode.Beq_s:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 == v2->i4) break; goto NEXT;
@@ -509,13 +511,13 @@ namespace VCSharp
                                 case StackValueTypeCompare.b_b: if (v1->b == v2->b) break; goto NEXT;
                                 default: if (v1->value == v2->value) break; goto NEXT;
                             }
-                            ops = (seek + *opv);
+                            ops = seek + *opv;
                         }
                         goto NEXT;
                     case ILOpCode.Bne_un:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 != v2->i4) break; goto NEXT;
@@ -557,13 +559,13 @@ namespace VCSharp
                                 case StackValueTypeCompare.b_b: if (v1->b != v2->b) break; goto NEXT;
                                 default: if (v1->value != v2->value) break; goto NEXT;
                             }
-                            ops = (seek + *(int*)opv);
+                            ops = seek + *(int*)opv;
                         }
                         goto NEXT;
                     case ILOpCode.Bne_un_s:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 != v2->i4) break; goto NEXT;
@@ -605,7 +607,7 @@ namespace VCSharp
                                 case StackValueTypeCompare.b_b: if (v1->b != v2->b) break; goto NEXT;
                                 default: if (v1->value != v2->value) break; goto NEXT;
                             }
-                            ops = (seek + *opv);
+                            ops = seek + *opv;
                         }
                         goto NEXT;
                     #endregion Br
@@ -613,8 +615,8 @@ namespace VCSharp
                     case ILOpCode.Bge:
                     case ILOpCode.Bge_un:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 >= v2->i4) break; goto NEXT;
@@ -655,14 +657,14 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: if (v1->r8 >= v2->r8) break; goto NEXT;
                                 default: throw new Exception("Invalid operation");
                             }
-                            ops = (seek + *(int*)opv);
+                            ops = seek + *(int*)opv;
                         }
                         goto NEXT;
                     case ILOpCode.Bge_s:
                     case ILOpCode.Bge_un_s:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 >= v2->i4) break; goto NEXT;
@@ -703,7 +705,7 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: if (v1->r8 >= v2->r8) break; goto NEXT;
                                 default: throw new Exception("Invalid operation");
                             }
-                            ops = (seek + *opv);
+                            ops = seek + *opv;
                         }
                         goto NEXT;
                     #endregion Bge
@@ -711,8 +713,8 @@ namespace VCSharp
                     case ILOpCode.Bgt:
                     case ILOpCode.Bgt_un:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 > v2->i4) break; goto NEXT;
@@ -753,14 +755,14 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: if (v1->r8 > v2->r8) break; goto NEXT;
                                 default: throw new Exception("Invalid operation");
                             }
-                            ops = (seek + *(int*)opv);
+                            ops = seek + *(int*)opv;
                         }
                         goto NEXT;
                     case ILOpCode.Bgt_s:
                     case ILOpCode.Bgt_un_s:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 > v2->i4) break; goto NEXT;
@@ -801,7 +803,7 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: if (v1->r8 > v2->r8) break; goto NEXT;
                                 default: throw new Exception("Invalid operation");
                             }
-                            ops = (seek + *opv);
+                            ops = seek + *opv;
                         }
                         goto NEXT;
                     #endregion Bgt
@@ -809,8 +811,8 @@ namespace VCSharp
                     case ILOpCode.Ble:
                     case ILOpCode.Ble_un:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 <= v2->i4) break; goto NEXT;
@@ -851,14 +853,14 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: if (v1->r8 <= v2->r8) break; goto NEXT;
                                 default: throw new Exception("Invalid operation");
                             }
-                            ops = (seek + *(int*)opv);
+                            ops = seek + *(int*)opv;
                         }
                         goto NEXT;
                     case ILOpCode.Ble_s:
                     case ILOpCode.Ble_un_s:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 <= v2->i4) break; goto NEXT;
@@ -899,7 +901,7 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: if (v1->r8 <= v2->r8) break; goto NEXT;
                                 default: throw new Exception("Invalid operation");
                             }
-                            ops = (seek + *opv);
+                            ops = seek + *opv;
                         }
                         goto NEXT;
                     #endregion Ble
@@ -907,8 +909,8 @@ namespace VCSharp
                     case ILOpCode.Blt:
                     case ILOpCode.Blt_un:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 < v2->i4) break; goto NEXT;
@@ -949,14 +951,14 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: if (v1->r8 < v2->r8) break; goto NEXT;
                                 default: throw new Exception("Invalid operation");
                             }
-                            ops = (seek + *(int*)opv);
+                            ops = seek + *(int*)opv;
                         }
                         goto NEXT;
                     case ILOpCode.Blt_s:
                     case ILOpCode.Blt_un_s:
                         {
-                            v1 = *(--stack);
-                            v2 = *(--stack);
+                            v1 = *--stack;
+                            v2 = *--stack;
                             switch ((StackValueTypeCompare)(v1->typeNum * COMPARE_TYPE_MAX + v2->typeNum))
                             {
                                 case StackValueTypeCompare.i4_i4: if (v1->i4 < v2->i4) break; goto NEXT;
@@ -997,7 +999,7 @@ namespace VCSharp
                                 case StackValueTypeCompare.r8_r8: if (v1->r8 < v2->r8) break; goto NEXT;
                                 default: throw new Exception("Invalid operation");
                             }
-                            ops = (seek + *opv);
+                            ops = seek + *opv;
                         }
                         goto NEXT;
                     #endregion
@@ -1005,7 +1007,7 @@ namespace VCSharp
                     case ILOpCode.Switch:
                         {
                             int index = *(int*)opv;
-                            ops = (seek + *((int*)opv + (index + 1)));
+                            ops = seek + *((int*)opv + (index + 1));
                         }
                         goto NEXT;
 
@@ -1380,7 +1382,7 @@ namespace VCSharp
                             {
                                 case StackValueTypeCompare.i4_i4: v1->i4 = v1->i4 | v2->i4; break;
                                 case StackValueTypeCompare.i4_i8: v1->i8 = (long)v1->i4 | v2->i8; v1->type = StackValueType.i8; break;
-                                case StackValueTypeCompare.i4_u4: v1->i8 = (long)v1->i4 | (long)v2->u4; v1->type = StackValueType.i8; break;
+                                case StackValueTypeCompare.i4_u4: v1->i8 = (long)v1->i4 | v2->u4; v1->type = StackValueType.i8; break;
                                 case StackValueTypeCompare.i4_u8: throw new Exception("Invalid operation"); // v1->i4 = v1->i4 | v2->u8; break;
                                 case StackValueTypeCompare.i4_r4: throw new Exception("Invalid operation"); // v1->r4 = v1->i4 | v2->r4; v1->type = StackValueType.r4; break;
                                 case StackValueTypeCompare.i4_r8: throw new Exception("Invalid operation"); // v1->r8 = v1->i4 | v2->r8; v1->type = StackValueType.r8; break;
@@ -1473,13 +1475,13 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i4 = -(v1->i4); break;
-                                case StackValueType.i8: v1->i8 = -(v1->i8); break;
+                                case StackValueType.i4: v1->i4 = -v1->i4; break;
+                                case StackValueType.i8: v1->i8 = -v1->i8; break;
                                 case StackValueType.u4: throw new Exception("Invalid operation"); // v1->u4 = -(v1->u4); break;
                                 case StackValueType.u8: throw new Exception("Invalid operation"); // v1->u8 = -(v1->u8); break;
-                                case StackValueType.r4: v1->r4 = -(v1->r4); break;
-                                case StackValueType.r8: v1->r8 = -(v1->r8); break;
-                                case StackValueType.b: v1->b = !(v1->b); break;
+                                case StackValueType.r4: v1->r4 = -v1->r4; break;
+                                case StackValueType.r8: v1->r8 = -v1->r8; break;
+                                case StackValueType.b: v1->b = !v1->b; break;
                             }
                             stacks.PushStack(v1);
                         }
@@ -1489,13 +1491,13 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i4 = ~(v1->i4); break;
-                                case StackValueType.i8: v1->i8 = ~(v1->i8); break;
-                                case StackValueType.u4: v1->u4 = ~(v1->u4); break;
-                                case StackValueType.u8: v1->u8 = ~(v1->u8); break;
+                                case StackValueType.i4: v1->i4 = ~v1->i4; break;
+                                case StackValueType.i8: v1->i8 = ~v1->i8; break;
+                                case StackValueType.u4: v1->u4 = ~v1->u4; break;
+                                case StackValueType.u8: v1->u8 = ~v1->u8; break;
                                 case StackValueType.r4: throw new Exception("Invalid operation"); // v1->r4 = ~(v1->r4); break;
                                 case StackValueType.r8: throw new Exception("Invalid operation"); // v1->r8 = ~(v1->r8); break;
-                                case StackValueType.b: v1->b = !(v1->b); break;
+                                case StackValueType.b: v1->b = !v1->b; break;
                             }
                             stacks.PushStack(v1);
                         }
@@ -1605,12 +1607,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i8 = (nint)(v1->i4); break;
-                                case StackValueType.i8: v1->i8 = (nint)(v1->i8); break;
-                                case StackValueType.u4: v1->i8 = (nint)(v1->u4); break;
-                                case StackValueType.u8: v1->i8 = (nint)(v1->u8); break;
-                                case StackValueType.r4: v1->i8 = (nint)(v1->r4); break;
-                                case StackValueType.r8: v1->i8 = (nint)(v1->r8); break;
+                                case StackValueType.i4: v1->i8 = v1->i4; break;
+                                case StackValueType.i8: v1->i8 = (nint)v1->i8; break;
+                                case StackValueType.u4: v1->i8 = (nint)v1->u4; break;
+                                case StackValueType.u8: v1->i8 = (nint)v1->u8; break;
+                                case StackValueType.r4: v1->i8 = (nint)v1->r4; break;
+                                case StackValueType.r8: v1->i8 = (nint)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i8;
@@ -1622,12 +1624,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i8 = (sbyte)(v1->i4); break;
-                                case StackValueType.i8: v1->i8 = (sbyte)(v1->i8); break;
-                                case StackValueType.u4: v1->i8 = (sbyte)(v1->u4); break;
-                                case StackValueType.u8: v1->i8 = (sbyte)(v1->u8); break;
-                                case StackValueType.r4: v1->i8 = (sbyte)(v1->r4); break;
-                                case StackValueType.r8: v1->i8 = (sbyte)(v1->r8); break;
+                                case StackValueType.i4: v1->i8 = (sbyte)v1->i4; break;
+                                case StackValueType.i8: v1->i8 = (sbyte)v1->i8; break;
+                                case StackValueType.u4: v1->i8 = (sbyte)v1->u4; break;
+                                case StackValueType.u8: v1->i8 = (sbyte)v1->u8; break;
+                                case StackValueType.r4: v1->i8 = (sbyte)v1->r4; break;
+                                case StackValueType.r8: v1->i8 = (sbyte)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
@@ -1639,12 +1641,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i8 = (short)(v1->i4); break;
-                                case StackValueType.i8: v1->i8 = (short)(v1->i8); break;
-                                case StackValueType.u4: v1->i8 = (short)(v1->u4); break;
-                                case StackValueType.u8: v1->i8 = (short)(v1->u8); break;
-                                case StackValueType.r4: v1->i8 = (short)(v1->r4); break;
-                                case StackValueType.r8: v1->i8 = (short)(v1->r8); break;
+                                case StackValueType.i4: v1->i8 = (short)v1->i4; break;
+                                case StackValueType.i8: v1->i8 = (short)v1->i8; break;
+                                case StackValueType.u4: v1->i8 = (short)v1->u4; break;
+                                case StackValueType.u8: v1->i8 = (short)v1->u8; break;
+                                case StackValueType.r4: v1->i8 = (short)v1->r4; break;
+                                case StackValueType.r8: v1->i8 = (short)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
@@ -1657,11 +1659,11 @@ namespace VCSharp
                             switch (v1->type)
                             {
                                 case StackValueType.i4: break;
-                                case StackValueType.i8: v1->i8 = (int)(v1->i8); break;
-                                case StackValueType.u4: v1->i8 = (int)(v1->u4); break;
-                                case StackValueType.u8: v1->i8 = (int)(v1->u8); break;
-                                case StackValueType.r4: v1->i8 = (int)(v1->r4); break;
-                                case StackValueType.r8: v1->i8 = (int)(v1->r8); break;
+                                case StackValueType.i8: v1->i8 = (int)v1->i8; break;
+                                case StackValueType.u4: v1->i8 = (int)v1->u4; break;
+                                case StackValueType.u8: v1->i8 = (int)v1->u8; break;
+                                case StackValueType.r4: v1->i8 = (int)v1->r4; break;
+                                case StackValueType.r8: v1->i8 = (int)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
@@ -1673,12 +1675,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i8 = (long)(v1->i4); break;
+                                case StackValueType.i4: v1->i8 = v1->i4; break;
                                 case StackValueType.i8: break;
-                                case StackValueType.u4: v1->i8 = (long)(v1->u4); break;
-                                case StackValueType.u8: v1->i8 = (long)(v1->u8); break;
-                                case StackValueType.r4: v1->i8 = (long)(v1->r4); break;
-                                case StackValueType.r8: v1->i8 = (long)(v1->r8); break;
+                                case StackValueType.u4: v1->i8 = v1->u4; break;
+                                case StackValueType.u8: v1->i8 = (long)v1->u8; break;
+                                case StackValueType.r4: v1->i8 = (long)v1->r4; break;
+                                case StackValueType.r8: v1->i8 = (long)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i8;
@@ -1691,12 +1693,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i8 = checked((nint)(v1->i4)); break;
-                                case StackValueType.i8: v1->i8 = checked((nint)(v1->i8)); break;
-                                case StackValueType.u4: v1->i8 = checked((nint)(v1->u4)); break;
-                                case StackValueType.u8: v1->i8 = checked((nint)(v1->u8)); break;
-                                case StackValueType.r4: v1->i8 = checked((nint)(v1->r4)); break;
-                                case StackValueType.r8: v1->i8 = checked((nint)(v1->r8)); break;
+                                case StackValueType.i4: v1->i8 = checked(v1->i4); break;
+                                case StackValueType.i8: v1->i8 = checked((nint)v1->i8); break;
+                                case StackValueType.u4: v1->i8 = checked((nint)v1->u4); break;
+                                case StackValueType.u8: v1->i8 = checked((nint)v1->u8); break;
+                                case StackValueType.r4: v1->i8 = checked((nint)v1->r4); break;
+                                case StackValueType.r8: v1->i8 = checked((nint)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i8;
@@ -1709,12 +1711,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i8 = checked((sbyte)(v1->i4)); break;
-                                case StackValueType.i8: v1->i8 = checked((sbyte)(v1->i8)); break;
-                                case StackValueType.u4: v1->i8 = checked((sbyte)(v1->u4)); break;
-                                case StackValueType.u8: v1->i8 = checked((sbyte)(v1->u8)); break;
-                                case StackValueType.r4: v1->i8 = checked((sbyte)(v1->r4)); break;
-                                case StackValueType.r8: v1->i8 = checked((sbyte)(v1->r8)); break;
+                                case StackValueType.i4: v1->i8 = checked((sbyte)v1->i4); break;
+                                case StackValueType.i8: v1->i8 = checked((sbyte)v1->i8); break;
+                                case StackValueType.u4: v1->i8 = checked((sbyte)v1->u4); break;
+                                case StackValueType.u8: v1->i8 = checked((sbyte)v1->u8); break;
+                                case StackValueType.r4: v1->i8 = checked((sbyte)v1->r4); break;
+                                case StackValueType.r8: v1->i8 = checked((sbyte)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
@@ -1727,12 +1729,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i8 = checked((short)(v1->i4)); break;
-                                case StackValueType.i8: v1->i8 = checked((short)(v1->i8)); break;
-                                case StackValueType.u4: v1->i8 = checked((short)(v1->u4)); break;
-                                case StackValueType.u8: v1->i8 = checked((short)(v1->u8)); break;
-                                case StackValueType.r4: v1->i8 = checked((short)(v1->r4)); break;
-                                case StackValueType.r8: v1->i8 = checked((short)(v1->r8)); break;
+                                case StackValueType.i4: v1->i8 = checked((short)v1->i4); break;
+                                case StackValueType.i8: v1->i8 = checked((short)v1->i8); break;
+                                case StackValueType.u4: v1->i8 = checked((short)v1->u4); break;
+                                case StackValueType.u8: v1->i8 = checked((short)v1->u8); break;
+                                case StackValueType.r4: v1->i8 = checked((short)v1->r4); break;
+                                case StackValueType.r8: v1->i8 = checked((short)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
@@ -1746,11 +1748,11 @@ namespace VCSharp
                             switch (v1->type)
                             {
                                 case StackValueType.i4: break;
-                                case StackValueType.i8: v1->i8 = checked((int)(v1->i8)); break;
-                                case StackValueType.u4: v1->i8 = checked((int)(v1->u4)); break;
-                                case StackValueType.u8: v1->i8 = checked((int)(v1->u8)); break;
-                                case StackValueType.r4: v1->i8 = checked((int)(v1->r4)); break;
-                                case StackValueType.r8: v1->i8 = checked((int)(v1->r8)); break;
+                                case StackValueType.i8: v1->i8 = checked((int)v1->i8); break;
+                                case StackValueType.u4: v1->i8 = checked((int)v1->u4); break;
+                                case StackValueType.u8: v1->i8 = checked((int)v1->u8); break;
+                                case StackValueType.r4: v1->i8 = checked((int)v1->r4); break;
+                                case StackValueType.r8: v1->i8 = checked((int)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i4;
@@ -1763,12 +1765,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->i8 = checked((long)(v1->i4)); break;
+                                case StackValueType.i4: v1->i8 = checked(v1->i4); break;
                                 case StackValueType.i8: break;
-                                case StackValueType.u4: v1->i8 = checked((long)(v1->u4)); break;
-                                case StackValueType.u8: v1->i8 = checked((long)(v1->u8)); break;
-                                case StackValueType.r4: v1->i8 = checked((long)(v1->r4)); break;
-                                case StackValueType.r8: v1->i8 = checked((long)(v1->r8)); break;
+                                case StackValueType.u4: v1->i8 = checked(v1->u4); break;
+                                case StackValueType.u8: v1->i8 = checked((long)v1->u8); break;
+                                case StackValueType.r4: v1->i8 = checked((long)v1->r4); break;
+                                case StackValueType.r8: v1->i8 = checked((long)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.i8;
@@ -1783,12 +1785,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->r4 = (float)(v1->i4); break;
-                                case StackValueType.i8: v1->r4 = (float)(v1->i8); break;
-                                case StackValueType.u4: v1->r4 = (float)(v1->u4); break;
-                                case StackValueType.u8: v1->r4 = (float)(v1->u8); break;
-                                case StackValueType.r4: v1->r4 = (float)(v1->r4); break;
-                                case StackValueType.r8: v1->r4 = (float)(v1->r8); break;
+                                case StackValueType.i4: v1->r4 = v1->i4; break;
+                                case StackValueType.i8: v1->r4 = v1->i8; break;
+                                case StackValueType.u4: v1->r4 = v1->u4; break;
+                                case StackValueType.u8: v1->r4 = v1->u8; break;
+                                case StackValueType.r4: v1->r4 = v1->r4; break;
+                                case StackValueType.r8: v1->r4 = (float)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.r4;
@@ -1801,12 +1803,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->r8 = (double)(v1->i4); break;
-                                case StackValueType.i8: v1->r8 = (double)(v1->i8); break;
-                                case StackValueType.u4: v1->r8 = (double)(v1->u4); break;
-                                case StackValueType.u8: v1->r8 = (double)(v1->u8); break;
-                                case StackValueType.r4: v1->r8 = (double)(v1->r4); break;
-                                case StackValueType.r8: v1->r8 = (double)(v1->r8); break;
+                                case StackValueType.i4: v1->r8 = v1->i4; break;
+                                case StackValueType.i8: v1->r8 = v1->i8; break;
+                                case StackValueType.u4: v1->r8 = v1->u4; break;
+                                case StackValueType.u8: v1->r8 = v1->u8; break;
+                                case StackValueType.r4: v1->r8 = v1->r4; break;
+                                case StackValueType.r8: v1->r8 = v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.r8;
@@ -1820,12 +1822,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = (nuint)(v1->i4); break;
-                                case StackValueType.i8: v1->u8 = (nuint)(v1->i8); break;
-                                case StackValueType.u4: v1->u8 = (nuint)(v1->u4); break;
-                                case StackValueType.u8: v1->u8 = (nuint)(v1->u8); break;
-                                case StackValueType.r4: v1->u8 = (nuint)(v1->r4); break;
-                                case StackValueType.r8: v1->u8 = (nuint)(v1->r8); break;
+                                case StackValueType.i4: v1->u8 = (nuint)v1->i4; break;
+                                case StackValueType.i8: v1->u8 = (nuint)v1->i8; break;
+                                case StackValueType.u4: v1->u8 = v1->u4; break;
+                                case StackValueType.u8: v1->u8 = (nuint)v1->u8; break;
+                                case StackValueType.r4: v1->u8 = (nuint)v1->r4; break;
+                                case StackValueType.r8: v1->u8 = (nuint)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u8;
@@ -1837,12 +1839,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = (byte)(v1->i4); break;
-                                case StackValueType.i8: v1->u8 = (byte)(v1->i8); break;
-                                case StackValueType.u4: v1->u8 = (byte)(v1->u4); break;
-                                case StackValueType.u8: v1->u8 = (byte)(v1->u8); break;
-                                case StackValueType.r4: v1->u8 = (byte)(v1->r4); break;
-                                case StackValueType.r8: v1->u8 = (byte)(v1->r8); break;
+                                case StackValueType.i4: v1->u8 = (byte)v1->i4; break;
+                                case StackValueType.i8: v1->u8 = (byte)v1->i8; break;
+                                case StackValueType.u4: v1->u8 = (byte)v1->u4; break;
+                                case StackValueType.u8: v1->u8 = (byte)v1->u8; break;
+                                case StackValueType.r4: v1->u8 = (byte)v1->r4; break;
+                                case StackValueType.r8: v1->u8 = (byte)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
@@ -1854,12 +1856,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = (ushort)(v1->i4); break;
-                                case StackValueType.i8: v1->u8 = (ushort)(v1->i8); break;
-                                case StackValueType.u4: v1->u8 = (ushort)(v1->u4); break;
-                                case StackValueType.u8: v1->u8 = (ushort)(v1->u8); break;
-                                case StackValueType.r4: v1->u8 = (ushort)(v1->r4); break;
-                                case StackValueType.r8: v1->u8 = (ushort)(v1->r8); break;
+                                case StackValueType.i4: v1->u8 = (ushort)v1->i4; break;
+                                case StackValueType.i8: v1->u8 = (ushort)v1->i8; break;
+                                case StackValueType.u4: v1->u8 = (ushort)v1->u4; break;
+                                case StackValueType.u8: v1->u8 = (ushort)v1->u8; break;
+                                case StackValueType.r4: v1->u8 = (ushort)v1->r4; break;
+                                case StackValueType.r8: v1->u8 = (ushort)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
@@ -1871,12 +1873,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = (uint)(v1->i4); break;
-                                case StackValueType.i8: v1->u8 = (uint)(v1->i8); break;
-                                case StackValueType.u4: v1->u8 = (uint)(v1->u4); break;
-                                case StackValueType.u8: v1->u8 = (uint)(v1->u8); break;
-                                case StackValueType.r4: v1->u8 = (uint)(v1->r4); break;
-                                case StackValueType.r8: v1->u8 = (uint)(v1->r8); break;
+                                case StackValueType.i4: v1->u8 = (uint)v1->i4; break;
+                                case StackValueType.i8: v1->u8 = (uint)v1->i8; break;
+                                case StackValueType.u4: v1->u8 = v1->u4; break;
+                                case StackValueType.u8: v1->u8 = (uint)v1->u8; break;
+                                case StackValueType.r4: v1->u8 = (uint)v1->r4; break;
+                                case StackValueType.r8: v1->u8 = (uint)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
@@ -1888,12 +1890,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = (ulong)(v1->i4); break;
-                                case StackValueType.i8: v1->u8 = (ulong)(v1->i8); break;
-                                case StackValueType.u4: v1->u8 = (ulong)(v1->u4); break;
-                                case StackValueType.u8: v1->u8 = (ulong)(v1->u8); break;
-                                case StackValueType.r4: v1->u8 = (ulong)(v1->r4); break;
-                                case StackValueType.r8: v1->u8 = (ulong)(v1->r8); break;
+                                case StackValueType.i4: v1->u8 = (ulong)v1->i4; break;
+                                case StackValueType.i8: v1->u8 = (ulong)v1->i8; break;
+                                case StackValueType.u4: v1->u8 = v1->u4; break;
+                                case StackValueType.u8: v1->u8 = v1->u8; break;
+                                case StackValueType.r4: v1->u8 = (ulong)v1->r4; break;
+                                case StackValueType.r8: v1->u8 = (ulong)v1->r8; break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u8;
@@ -1906,12 +1908,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = checked((nuint)(v1->i4)); break;
-                                case StackValueType.i8: v1->u8 = checked((nuint)(v1->i8)); break;
-                                case StackValueType.u4: v1->u8 = checked((nuint)(v1->u4)); break;
-                                case StackValueType.u8: v1->u8 = checked((nuint)(v1->u8)); break;
-                                case StackValueType.r4: v1->u8 = checked((nuint)(v1->r4)); break;
-                                case StackValueType.r8: v1->u8 = checked((nuint)(v1->r8)); break;
+                                case StackValueType.i4: v1->u8 = checked((nuint)v1->i4); break;
+                                case StackValueType.i8: v1->u8 = checked((nuint)v1->i8); break;
+                                case StackValueType.u4: v1->u8 = checked(v1->u4); break;
+                                case StackValueType.u8: v1->u8 = checked((nuint)v1->u8); break;
+                                case StackValueType.r4: v1->u8 = checked((nuint)v1->r4); break;
+                                case StackValueType.r8: v1->u8 = checked((nuint)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u8;
@@ -1924,12 +1926,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = checked((byte)(v1->i4)); break;
-                                case StackValueType.i8: v1->u8 = checked((byte)(v1->i8)); break;
-                                case StackValueType.u4: v1->u8 = checked((byte)(v1->u4)); break;
-                                case StackValueType.u8: v1->u8 = checked((byte)(v1->u8)); break;
-                                case StackValueType.r4: v1->u8 = checked((byte)(v1->r4)); break;
-                                case StackValueType.r8: v1->u8 = checked((byte)(v1->r8)); break;
+                                case StackValueType.i4: v1->u8 = checked((byte)v1->i4); break;
+                                case StackValueType.i8: v1->u8 = checked((byte)v1->i8); break;
+                                case StackValueType.u4: v1->u8 = checked((byte)v1->u4); break;
+                                case StackValueType.u8: v1->u8 = checked((byte)v1->u8); break;
+                                case StackValueType.r4: v1->u8 = checked((byte)v1->r4); break;
+                                case StackValueType.r8: v1->u8 = checked((byte)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
@@ -1942,12 +1944,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = checked((ushort)(v1->i4)); break;
-                                case StackValueType.i8: v1->u8 = checked((ushort)(v1->i8)); break;
-                                case StackValueType.u4: v1->u8 = checked((ushort)(v1->u4)); break;
-                                case StackValueType.u8: v1->u8 = checked((ushort)(v1->u8)); break;
-                                case StackValueType.r4: v1->u8 = checked((ushort)(v1->r4)); break;
-                                case StackValueType.r8: v1->u8 = checked((ushort)(v1->r8)); break;
+                                case StackValueType.i4: v1->u8 = checked((ushort)v1->i4); break;
+                                case StackValueType.i8: v1->u8 = checked((ushort)v1->i8); break;
+                                case StackValueType.u4: v1->u8 = checked((ushort)v1->u4); break;
+                                case StackValueType.u8: v1->u8 = checked((ushort)v1->u8); break;
+                                case StackValueType.r4: v1->u8 = checked((ushort)v1->r4); break;
+                                case StackValueType.r8: v1->u8 = checked((ushort)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
@@ -1960,12 +1962,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = checked((uint)(v1->i4)); break;
-                                case StackValueType.i8: v1->u8 = checked((uint)(v1->i8)); break;
-                                case StackValueType.u4: v1->u8 = checked((uint)(v1->u4)); break;
-                                case StackValueType.u8: v1->u8 = checked((uint)(v1->u8)); break;
-                                case StackValueType.r4: v1->u8 = checked((uint)(v1->r4)); break;
-                                case StackValueType.r8: v1->u8 = checked((uint)(v1->r8)); break;
+                                case StackValueType.i4: v1->u8 = checked((uint)v1->i4); break;
+                                case StackValueType.i8: v1->u8 = checked((uint)v1->i8); break;
+                                case StackValueType.u4: v1->u8 = checked(v1->u4); break;
+                                case StackValueType.u8: v1->u8 = checked((uint)v1->u8); break;
+                                case StackValueType.r4: v1->u8 = checked((uint)v1->r4); break;
+                                case StackValueType.r8: v1->u8 = checked((uint)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u4;
@@ -1978,12 +1980,12 @@ namespace VCSharp
                             v1 = stacks.PopStack();
                             switch (v1->type)
                             {
-                                case StackValueType.i4: v1->u8 = checked((ulong)(v1->i4)); break;
-                                case StackValueType.i8: v1->u8 = checked((ulong)(v1->i8)); break;
-                                case StackValueType.u4: v1->u8 = checked((ulong)(v1->u4)); break;
-                                case StackValueType.u8: v1->u8 = checked((ulong)(v1->u8)); break;
-                                case StackValueType.r4: v1->u8 = checked((ulong)(v1->r4)); break;
-                                case StackValueType.r8: v1->u8 = checked((ulong)(v1->r8)); break;
+                                case StackValueType.i4: v1->u8 = checked((ulong)v1->i4); break;
+                                case StackValueType.i8: v1->u8 = checked((ulong)v1->i8); break;
+                                case StackValueType.u4: v1->u8 = checked(v1->u4); break;
+                                case StackValueType.u8: v1->u8 = checked(v1->u8); break;
+                                case StackValueType.r4: v1->u8 = checked((ulong)v1->r4); break;
+                                case StackValueType.r8: v1->u8 = checked((ulong)v1->r8); break;
                                 default: throw new Exception("Invalid operation");
                             }
                             v1->type = StackValueType.u8;

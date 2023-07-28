@@ -6,8 +6,10 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using VCSharp.Reflection;
+using VCSharp.Utils;
 
-namespace VCSharp
+namespace VCSharp.Inline
 {
     /// <summary>
     /// switch(l->type)
@@ -375,19 +377,19 @@ namespace VCSharp
         {
             if (type == typeof(sbyte)) return (sbyte)v->i4;
             else if (type == typeof(short)) return (short)v->i4;
-            else if (type == typeof(int)) return (int)v->i4;
-            else if (type == typeof(long)) return (long)v->i8;
+            else if (type == typeof(int)) return v->i4;
+            else if (type == typeof(long)) return v->i8;
             else if (type == typeof(nint)) return (nint)v->i8;
             else if (type == typeof(byte)) return (byte)v->u4;
             else if (type == typeof(ushort)) return (ushort)v->u4;
-            else if (type == typeof(uint)) return (uint)v->u4;
+            else if (type == typeof(uint)) return v->u4;
             else if (type == typeof(char)) return (char)v->u4;
-            else if (type == typeof(ulong)) return (ulong)v->u8;
+            else if (type == typeof(ulong)) return v->u8;
             else if (type == typeof(nuint)) return (nuint)v->u8;
-            else if (type == typeof(float)) return (float)v->r4;
-            else if (type == typeof(double)) return (double)v->r8;
+            else if (type == typeof(float)) return v->r4;
+            else if (type == typeof(double)) return v->r8;
             else if (type == typeof(decimal)) return (decimal)v->r8;
-            else if (type == typeof(bool)) return (bool)v->b;
+            else if (type == typeof(bool)) return v->b;
             else if (type.IsValueType)
             {
                 if (v->type == StackValueType.st)
@@ -416,7 +418,7 @@ namespace VCSharp
         {
             int size = VTypeConverter.GetSize(src->type);
 
-            var v2 = *(stack++) = (StackValue*)Alloc(size + 1);
+            var v2 = *stack++ = (StackValue*)Alloc(size + 1);
             v2->type = src->type;
             Unsafe.CopyBlock((byte*)(v2 + 1), (byte*)src + 1, (uint)size);
         }
@@ -425,21 +427,21 @@ namespace VCSharp
         {
             int size = VTypeConverter.GetSize(type);
 
-            var v2 = *(stack++) = (StackValue*)Alloc(size + 1);
+            var v2 = *stack++ = (StackValue*)Alloc(size + 1);
             v2->type = type;
             Unsafe.CopyBlock((byte*)(v2 + 1), (byte*)value, (uint)size);
         }
 
         internal void PushStack(StackValueType type, void* value, int size)
         {
-            var v2 = *(stack++) = (StackValue*)Alloc(size + 1);
+            var v2 = *stack++ = (StackValue*)Alloc(size + 1);
             v2->type = type;
             Unsafe.CopyBlock((byte*)(v2 + 1), (byte*)value, (uint)size);
         }
 
         internal void PushStack(int i4)
         {
-            var v2 = *(stack++) = (StackValue*)Alloc(sizeof(StackValue4));
+            var v2 = *stack++ = (StackValue*)Alloc(sizeof(StackValue4));
             v2->type = StackValueType.i4;
             v2->i4 = i4;
         }
@@ -450,14 +452,14 @@ namespace VCSharp
             {
                 case StackValueType.obj:
                     {
-                        var dst = *(stack++) = (StackValue*)Alloc(sizeof(int) + 1);
+                        var dst = *stack++ = (StackValue*)Alloc(sizeof(int) + 1);
                         dst->type = StackValueType.obj;
                         dst->i4 = src->i4;
                     }
                     break;
                 default:
                     {
-                        var dst = *(stack++) = (StackValue*)Alloc(sizeof(nint) + 1);
+                        var dst = *stack++ = (StackValue*)Alloc(sizeof(nint) + 1);
                         dst->type = StackValueType.st;
                         dst->vptr = src + 1;
                     }
@@ -540,7 +542,7 @@ namespace VCSharp
                     nint ptr = 0;
                     if (obj != null)
                     {
-                        ptr = *(int*)(*(byte*)&obj);
+                        ptr = *(int*)*(byte*)&obj;
                     }
                     PushStack(StackValueType.u8, &ptr);
                 }
@@ -595,7 +597,7 @@ namespace VCSharp
         internal StackValue* PopStack()
         {
             BStack = (byte*)*stack;
-            var result = *(--stack);
+            var result = *--stack;
             if (result->type == StackValueType.obj)
             {
                 OStack--;
@@ -606,7 +608,7 @@ namespace VCSharp
         internal void PopStackVoid()
         {
             BStack = (byte*)*stack;
-            var result = *(--stack);
+            var result = *--stack;
             if (result->type == StackValueType.obj)
             {
                 OStack--;
