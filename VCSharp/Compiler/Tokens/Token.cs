@@ -46,6 +46,8 @@ namespace VCSharp.Compiler.Tokens
             return m_Text;
         }
 
+        public bool IsIdentifierToken => this is IdentifierToken || (this is KeywordToken kt && kt.IsIdentifier);
+
         public static bool operator ==(Token token, char val) => token.IsMatch(val);
         public static bool operator !=(Token token, char val) => !token.IsMatch(val);
         public static bool operator ==(char val, Token token) => token.IsMatch(val);

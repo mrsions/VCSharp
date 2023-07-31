@@ -6,18 +6,10 @@ using System.Threading.Tasks;
 
 namespace VCSharp.Reflection
 {
-    public enum VMemberAccessType
-    {
-        Private,
-        Protected,
-        Public,
-        Internal
-    }
-
     public abstract class VMemberInfo
     {
         public string Name;
-        public VMemberAccessType AccessType;
+        public VMemberFlags Flags;
         public bool Static;
     }
 }

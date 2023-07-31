@@ -26,8 +26,11 @@ namespace VCSharp.Compiler.Tokens
             TokenMaxLength = Tokens.Max(v => v.Text.Length);
         }
 
-        public KeywordToken(string name) : base(name)
+        public bool AllowIdentifier { get; private set; }
+
+        public KeywordToken(string name, bool allowIdentifier = false) : base(name)
         {
+            AllowIdentifier = allowIdentifier;
         }
 
         public readonly static KeywordToken As = new KeywordToken("as");
@@ -72,6 +75,8 @@ namespace VCSharp.Compiler.Tokens
         public readonly static KeywordToken New = new KeywordToken("new");
         public readonly static KeywordToken Null = new KeywordToken("null");
         public readonly static KeywordToken Object = new KeywordToken("object");
+        public readonly static KeywordToken Nint = new KeywordToken("nint");
+        public readonly static KeywordToken Nuint = new KeywordToken("nuint");
         public readonly static KeywordToken Operator = new KeywordToken("operator");
         public readonly static KeywordToken Out = new KeywordToken("out");
         public readonly static KeywordToken Override = new KeywordToken("override");
@@ -84,13 +89,14 @@ namespace VCSharp.Compiler.Tokens
         public readonly static KeywordToken Return = new KeywordToken("return");
         public readonly static KeywordToken Sbyte = new KeywordToken("sbyte");
         public readonly static KeywordToken Sealed = new KeywordToken("sealed");
+        public readonly static KeywordToken File = new KeywordToken("file", true);
         public readonly static KeywordToken Short = new KeywordToken("short");
         public readonly static KeywordToken Sizeof = new KeywordToken("sizeof");
         public readonly static KeywordToken Stackalloc = new KeywordToken("stackalloc");
         public readonly static KeywordToken Static = new KeywordToken("static");
         public readonly static KeywordToken String = new KeywordToken("string");
         public readonly static KeywordToken Struct = new KeywordToken("struct");
-        public readonly static KeywordToken Record = new KeywordToken("record");
+        public readonly static KeywordToken Record = new KeywordToken("record", true);
         public readonly static KeywordToken Switch = new KeywordToken("switch");
         public readonly static KeywordToken This = new KeywordToken("this");
         public readonly static KeywordToken Throw = new KeywordToken("throw");
@@ -101,11 +107,18 @@ namespace VCSharp.Compiler.Tokens
         public readonly static KeywordToken Ulong = new KeywordToken("ulong");
         public readonly static KeywordToken Unchecked = new KeywordToken("unchecked");
         public readonly static KeywordToken Unsafe = new KeywordToken("unsafe");
+        public readonly static KeywordToken Partial = new KeywordToken("partial", true);
+        public readonly static KeywordToken Abstract = new KeywordToken("abstract");
         public readonly static KeywordToken Ushort = new KeywordToken("ushort");
         public readonly static KeywordToken Using = new KeywordToken("using");
         public readonly static KeywordToken Virtual = new KeywordToken("virtual");
         public readonly static KeywordToken Void = new KeywordToken("void");
         public readonly static KeywordToken Volatile = new KeywordToken("volatile");
         public readonly static KeywordToken While = new KeywordToken("while");
+
+        class BB_AADD
+        {
+
+        }
     }
 }

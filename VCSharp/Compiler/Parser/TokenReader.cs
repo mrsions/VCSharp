@@ -23,12 +23,21 @@ namespace VCSharp.Compiler.Parser
             index = 0;
         }
 
-        public bool TryReadNext([NotNullWhen(true)] out Token? token)
+        public bool IsEnd() => index >= Tokens.Count;
+
+        public bool TryReadNext([NotNullWhen(true)] out Token? token, bool escapeWhiteSpace = false)
         {
             if (index < Tokens.Count)
             {
                 token = Tokens[index++];
-                return true;
+                if (escapeWhiteSpace && token is WhiteSpaceToken)
+                {
+                    return TryReadNext(out token);
+                }
+                else
+                {
+                    return true;
+                }
             }
             else
             {
@@ -46,8 +55,12 @@ namespace VCSharp.Compiler.Parser
         {
             index--;
         }
+        public void Redo(int v)
+        {
+            index -= v;
+        }
 
-        public IEnumerable<Token> ReadNextAll()
+        public IEnumerable<Token> GetNextAll()
         {
             for (int i = index; i < Tokens.Count; i++)
             {
@@ -60,7 +73,12 @@ namespace VCSharp.Compiler.Parser
         public List<Token> ReadToNext(Func<Token, bool> allow, bool consumeBreak, bool includeBreak)
         {
             List<Token> result = new List<Token>();
+            ReadToNext(result, allow, consumeBreak, includeBreak);
+            return result;
+        }
 
+        public void ReadToNext(List<Token> result, Func<Token, bool> allow, bool consumeBreak, bool includeBreak)
+        {
             while (TryReadNext(out var token))
             {
                 if (allow(token))
@@ -82,8 +100,6 @@ namespace VCSharp.Compiler.Parser
                     break;
                 }
             }
-
-            return result;
         }
 
     }

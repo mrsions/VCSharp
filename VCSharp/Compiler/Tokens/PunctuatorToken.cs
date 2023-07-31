@@ -24,6 +24,7 @@ namespace VCSharp.Compiler.Tokens
         public readonly static Dictionary<string, PunctuatorToken> TokenDict;
         public readonly static char[] TokenStarts;
         public readonly static int TokenMaxLength;
+        public readonly static int _Test;
 
         static PunctuatorToken()
         {
