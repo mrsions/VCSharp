@@ -238,6 +238,7 @@ namespace VCSharp.Compiler.Parser
 
             curCS.name = ReadDefineTypeName(reader, true, false);
 
+
         }
 
         private static void SetMemberFlags(Token token, VMemberFlags flag, ref VMemberFlags flags)
